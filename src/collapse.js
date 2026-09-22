@@ -1,6 +1,4 @@
 // src/collapse.js
-// Squelette repris de la structure Overflo — à adapter aux besoins de RockFi.
-
 function initCollapses() {
   const collapses = document.querySelectorAll("[data-collapse]");
 
@@ -15,7 +13,5 @@ function initCollapses() {
     });
   });
 }
-
-document.addEventListener("DOMContentLoaded", initCollapses);
 
 export { initCollapses };

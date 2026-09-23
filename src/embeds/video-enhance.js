@@ -1,12 +1,7 @@
 // src/embeds/video-enhance.js
-// [video src="https://cdn.../video.mp4" poster="https://.../poster.jpg"]
-// [video src="https://www.youtube.com/watch?v=XXXXXXXXXXX"]
-// [video src="https://vimeo.com/XXXXXXXXX"]
-// Shortcode self-fermant. Player via Plyr (CDN dans le footer Webflow,
-// window.Plyr). Toolbar Plyr masquée tant que la vidéo n'a pas démarré ;
-// à la place, overlay custom (gradient + bouton glass + "Voir la vidéo" +
-// durée), repris du composant video_blog existant sur le site. PAS de
-// .rf-wrap : prend la largeur pleine de .rich-text_blog, comme le slider.
+// transformVideo(html) : pur texte, génère le markup .rt-video.
+// initVideoListeners(root) : instancie Plyr + câble l'overlay custom sur
+// les nœuds DOM finaux, appelé une seule fois après le write global.
 
 import { parseAttrs } from "../utils/parse-attrs.js";
 
@@ -35,9 +30,6 @@ function buildPlayerMarkup(src, poster) {
   return `<video playsinline${posterAttr}><source src="${src}" type="video/mp4"></video>`;
 }
 
-// Les id (bgblur_0_102_1211_clip_path) contiennent tous le suffixe
-// "102_1211". On le remplace par un suffixe unique par vidéo pour éviter
-// des id dupliqués si plusieurs [video] apparaissent sur la même page.
 function buildGlassIconSVG(idSuffix) {
   const raw = `<svg width="100%" height="100%" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
 <foreignObject x="-48" y="-48" width="144" height="144"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(24px);clip-path:url(#bgblur_0_102_1211_clip_path);height:100%;width:100%"></div></foreignObject><g data-figma-bg-blur-radius="48">
@@ -61,14 +53,8 @@ function formatDuration(seconds) {
 
 let videoInstanceCounter = 0;
 
-export function initVideoEnhance(root = document) {
-  const contentEl = root.querySelector(".rich-text_blog");
-  if (!contentEl) return;
-
-  if (!VIDEO_BLOCK_REGEX.test(contentEl.innerHTML)) return;
-  VIDEO_BLOCK_REGEX.lastIndex = 0;
-
-  contentEl.innerHTML = contentEl.innerHTML.replace(VIDEO_BLOCK_REGEX, (match, attrString) => {
+export function transformVideo(html) {
+  return html.replace(VIDEO_BLOCK_REGEX, (match, attrString) => {
     const attrs = parseAttrs(attrString);
     const src = attrs.src || "";
     const poster = attrs.poster || "";
@@ -93,8 +79,10 @@ export function initVideoEnhance(root = document) {
       </div>
     `;
   });
+}
 
-  contentEl.querySelectorAll(".rt-video:not([data-video-initialized])").forEach((el) => {
+export function initVideoListeners(root = document) {
+  root.querySelectorAll(".rt-video:not([data-video-initialized])").forEach((el) => {
     el.setAttribute("data-video-initialized", "true");
     if (typeof window.Plyr === "undefined") return;
 

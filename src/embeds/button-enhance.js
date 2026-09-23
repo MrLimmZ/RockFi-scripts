@@ -1,10 +1,21 @@
 // src/embeds/button-enhance.js
+// [button href="/contact"]Prendre rendez-vous[/button]
+// [button href="/contact" icon="false"]Sans icône[/button]
+// Icône (rond en pointillés) incluse par défaut, désactivable avec icon="false".
+// Enveloppé dans .rf-wrap comme table/list/calc.
+// transformButton(html) : pur texte, aucun accès DOM — appelé depuis
+// embeds/index.js dans la chaîne de transformation globale.
 
 import { parseAttrs } from "../utils/parse-attrs.js";
 
 const BUTTON_BLOCK_REGEX =
   /(?:<p>)?\[button([^\]]*)\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/button\](?:<\/p>)?/gi;
 
+// Les id (bgblur_X_27936_9718_clip_path) contiennent tous le suffixe
+// "27936_9718". On le remplace par un suffixe unique par bouton pour éviter
+// des id dupliqués si plusieurs [button] avec icône apparaissent sur la page.
+// fill="white" -> "currentColor" pour hériter automatiquement de la couleur
+// du bouton plutôt que rester figé en blanc.
 function buildIconSVG(idSuffix) {
   const raw = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <foreignObject x="-1.69982" y="-1.69494" width="7.55394" height="7.55321"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(1.23px);clip-path:url(#bgblur_0_27936_9718_clip_path);height:100%;width:100%"></div></foreignObject><circle data-figma-bg-blur-radius="2.46154" cx="2.07751" cy="2.08166" r="1.31507" transform="rotate(-180 2.07751 2.08166)" fill="white" fill-opacity="0.1"/>
@@ -38,29 +49,20 @@ function buildIconSVG(idSuffix) {
 
 let buttonInstanceCounter = 0;
 
-export function initButtonEnhance(root = document) {
-  const contentEl = root.querySelector(".rich-text_blog");
-  if (!contentEl) return;
+export function transformButton(html) {
+  return html.replace(BUTTON_BLOCK_REGEX, (match, attrString, body) => {
+    const attrs = parseAttrs(attrString);
+    const href = attrs.href || "#";
+    const label = body.replace(/<[^>]+>/g, "").trim();
+    if (!label) return match;
 
-  if (!BUTTON_BLOCK_REGEX.test(contentEl.innerHTML)) return;
-  BUTTON_BLOCK_REGEX.lastIndex = 0;
+    const showIcon = attrs.icon !== "false";
 
-  contentEl.innerHTML = contentEl.innerHTML.replace(
-    BUTTON_BLOCK_REGEX,
-    (match, attrString, body) => {
-      const attrs = parseAttrs(attrString);
-      const href = attrs.href || "#";
-      const label = body.replace(/<[^>]+>/g, "").trim();
-      if (!label) return match;
+    buttonInstanceCounter += 1;
+    const iconHTML = showIcon
+      ? `<div class="rt-button-icon">${buildIconSVG(`rtbtn${buttonInstanceCounter}`)}</div>`
+      : "";
 
-      const showIcon = attrs.icon !== "false";
-
-      buttonInstanceCounter += 1;
-      const iconHTML = showIcon
-        ? `<div class="rt-button-icon">${buildIconSVG(`rtbtn${buttonInstanceCounter}`)}</div>`
-        : "";
-
-      return `<div class="rf-wrap"><a href="${href}" class="rt-button">${iconHTML}<div>${label}</div></a></div>`;
-    },
-  );
+    return `<div class="rf-wrap"><a href="${href}" class="rt-button">${iconHTML}<div>${label}</div></a></div>`;
+  });
 }

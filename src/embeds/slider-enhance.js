@@ -1,11 +1,7 @@
 // src/embeds/slider-enhance.js
-// [slider]
-// https://.../img1.jpg | Légende 1
-// https://.../img2.jpg
-// [/slider]
-// Une ligne = une image. "| légende" optionnel après l'URL.
-// Slider maison "peek" avec drag souris/tactile + snap magnétique.
-// Pas de .rf-wrap : largeur pleine de .rich-text_blog.
+// transformSlider(html) : pur texte, génère le markup .rt-slider.
+// initSliderListeners(root) : attache drag + boutons sur les nœuds DOM
+// finaux, appelé une seule fois après le write global de innerHTML.
 
 const SLIDER_BLOCK_REGEX =
   /(?:<p>)?\[slider\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/slider\](?:<\/p>)?/gi;
@@ -42,6 +38,23 @@ function buildSlidesHTML(body) {
     .join("");
 }
 
+export function transformSlider(html) {
+  return html.replace(SLIDER_BLOCK_REGEX, (match, body) => {
+    const slidesHTML = buildSlidesHTML(body);
+    if (!slidesHTML) return match;
+
+    return `
+      <div class="rt-slider">
+        <div class="rt-slider-track">${slidesHTML}</div>
+        <div class="rt-slider-controls">
+          <button type="button" class="rt-slider-prev" aria-label="Image précédente">${CHEVRON_SVG}</button>
+          <button type="button" class="rt-slider-next" aria-label="Image suivante">${CHEVRON_SVG}</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
 function initOneSlider(el) {
   const track = el.querySelector(".rt-slider-track");
   const items = Array.from(el.querySelectorAll(".rt-slider-item"));
@@ -67,11 +80,6 @@ function initOneSlider(el) {
     return Math.max(0, track.scrollWidth - el.clientWidth);
   }
 
-  // Lit la position RÉELLEMENT affichée à l'écran (via la matrice de
-  // transform calculée par le navigateur), indépendamment d'une transition
-  // CSS en cours — contrairement à currentOffset qui, lui, est déjà mis à
-  // jour sur la valeur CIBLE dès l'appel de setOffset, avant même que
-  // l'animation visuelle ait fini de s'y rendre.
   function getLiveOffset() {
     const style = window.getComputedStyle(track);
     const matrix = new DOMMatrixReadOnly(style.transform);
@@ -97,10 +105,6 @@ function initOneSlider(el) {
   if (nextBtn) nextBtn.addEventListener("click", () => goToIndex(index + 1));
 
   track.addEventListener("pointerdown", (e) => {
-    // Interrompt une transition éventuellement en cours : on fige le track à
-    // sa position RÉELLE affichée à l'écran à cet instant (pas la valeur
-    // cible mémorisée dans currentOffset), sinon le nouveau drag démarre
-    // depuis le mauvais point et ça "saute" visuellement.
     const liveOffset = getLiveOffset();
     track.style.transition = "none";
     track.style.transform = `translateX(-${liveOffset}px)`;
@@ -168,29 +172,8 @@ function initOneSlider(el) {
   goToIndex(0, false);
 }
 
-export function initSliderEnhance(root = document) {
-  const contentEl = root.querySelector(".rich-text_blog");
-  if (!contentEl) return;
-
-  if (!SLIDER_BLOCK_REGEX.test(contentEl.innerHTML)) return;
-  SLIDER_BLOCK_REGEX.lastIndex = 0;
-
-  contentEl.innerHTML = contentEl.innerHTML.replace(SLIDER_BLOCK_REGEX, (match, body) => {
-    const slidesHTML = buildSlidesHTML(body);
-    if (!slidesHTML) return match;
-
-    return `
-      <div class="rt-slider">
-        <div class="rt-slider-track">${slidesHTML}</div>
-        <div class="rt-slider-controls">
-          <button type="button" class="rt-slider-prev" aria-label="Image précédente">${CHEVRON_SVG}</button>
-          <button type="button" class="rt-slider-next" aria-label="Image suivante">${CHEVRON_SVG}</button>
-        </div>
-      </div>
-    `;
-  });
-
-  contentEl.querySelectorAll(".rt-slider:not([data-slider-initialized])").forEach((el) => {
+export function initSliderListeners(root = document) {
+  root.querySelectorAll(".rt-slider:not([data-slider-initialized])").forEach((el) => {
     el.setAttribute("data-slider-initialized", "true");
     initOneSlider(el);
   });

@@ -15,6 +15,7 @@ import { initDotArrow } from "./animate/dot-arrow.js";
 import { initParallax } from "./animate/parallax.js";
 import { initListLenisSync } from "./list-lenis-sync.js";
 import { initFocusStories } from "./focus-stories.js";
+import { initNameTokens } from "./name-tokens.js";
 
 const BUILD_VERSION = new Date().toISOString().slice(0, 10);
 console.log(`%c[RockFi] main.js — build v1.0.1 ${BUILD_VERSION}`, "color:#7dd3fc");
@@ -35,4 +36,5 @@ onReady(() => {
   initListLenisSync();
   initFocusStories();
   initDotArrow();
+  initNameTokens();
 });

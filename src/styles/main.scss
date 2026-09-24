@@ -2,6 +2,7 @@
 // Point d'entrée des styles RockFi.
 // Importer ici les partials au fur et à mesure (ex: @use "modules/nav";)
 @use "blog";
+@use "animate";
 
 .navbar_component.w-nav::before,
 .navbar_component.w-nav::after {

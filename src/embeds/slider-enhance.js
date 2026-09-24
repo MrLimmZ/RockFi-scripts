@@ -6,8 +6,9 @@
 const SLIDER_BLOCK_REGEX =
   /(?:<p>)?\[slider\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/slider\](?:<\/p>)?/gi;
 
+// SVG d'origine conservé (inversé pour prev via votre règle SCSS transform: scaleX(-1))
 const CHEVRON_SVG =
-  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.00003 4L10 8L6 12" stroke="#1A1A1A" stroke-miterlimit="16" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M6.00003 4L10 8L6 12" stroke="#1A1A1A" stroke-miterlimit="16" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function buildSlidesHTML(body) {
   const lines = body
@@ -17,8 +18,10 @@ function buildSlidesHTML(body) {
     .map((line) => line.trim())
     .filter(Boolean);
 
+  const total = lines.length;
+
   return lines
-    .map((line) => {
+    .map((line, idx) => {
       const parts = line.split("|").map((s) => s.trim());
       const url = parts[0];
       const caption = parts[1] || "";
@@ -28,8 +31,9 @@ function buildSlidesHTML(body) {
         ? `<figcaption class="rt-slider-caption">${caption}</figcaption>`
         : "";
 
+      // On garde <div> pour éviter les marges natives des <figure>
       return `
-        <div class="rt-slider-item">
+        <div class="rt-slider-item" role="group" aria-roledescription="diapositive" aria-label="${idx + 1} sur ${total}">
           <img src="${url}" alt="${caption}" loading="lazy" draggable="false">
           ${captionHTML}
         </div>
@@ -43,8 +47,9 @@ export function transformSlider(html) {
     const slidesHTML = buildSlidesHTML(body);
     if (!slidesHTML) return match;
 
+    // Pleine largeur garantie, balise <div> préservée
     return `
-      <div class="rt-slider">
+      <div class="rt-slider" role="region" aria-roledescription="carrousel" aria-label="Galerie d'images" tabindex="0">
         <div class="rt-slider-track">${slidesHTML}</div>
         <div class="rt-slider-controls">
           <button type="button" class="rt-slider-prev" aria-label="Image précédente">${CHEVRON_SVG}</button>
@@ -103,6 +108,17 @@ function initOneSlider(el) {
 
   if (prevBtn) prevBtn.addEventListener("click", () => goToIndex(index - 1));
   if (nextBtn) nextBtn.addEventListener("click", () => goToIndex(index + 1));
+
+  // Navigation pratique au clavier quand le carrousel est sélectionné
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goToIndex(index - 1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goToIndex(index + 1);
+    }
+  });
 
   track.addEventListener("pointerdown", (e) => {
     const liveOffset = getLiveOffset();

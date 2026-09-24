@@ -1,0 +1,4 @@
+[data-inview]:not(.--visible),
+[data-text-reveal]:not(.--visible) {
+  opacity: 0;
+}

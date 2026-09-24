@@ -1,3 +1,5 @@
+// src/embeds/list-enhance.js
+
 const LIST_BLOCK_REGEX =
   /(?:<p>)?\[list\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/list\](?:<\/p>)?/gi;
 
@@ -29,6 +31,6 @@ export function transformList(html) {
       )
       .join("");
 
-    return `<div class="rf-wrap"><ul class="rt-list rt-text" role="list">${itemsHTML}</ul></div>`;
+    return `<div class="blog-embed_wrapper"><ul class="rt-list rt-text" role="list">${itemsHTML}</ul></div>`;
   });
 }

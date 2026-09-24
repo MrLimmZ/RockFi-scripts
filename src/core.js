@@ -10,6 +10,7 @@ export function initLenis() {
   lenisInstance = new window.Lenis({
     duration: 1.2,
     smoothWheel: true,
+    anchors: false,
   });
 
   function raf(time) {

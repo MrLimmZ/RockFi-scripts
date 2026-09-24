@@ -1,3 +1,5 @@
+// src/embeds/quote-large-enhance.js
+
 const QUOTE_LARGE_BLOCK_REGEX =
   /(?:<p>)?\[quote-large\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/quote-large\](?:<\/p>)?/gi;
 
@@ -10,8 +12,8 @@ export function transformQuoteLarge(html) {
     if (!text) return match;
 
     return `
-      <div class="rf-wrap">
-        <blockquote class="rt-quote-large">&ldquo;${text}&rdquo;</blockquote>
+      <div class="blog-embed_wrapper">
+        <blockquote class="rt-quote-large" data-text-reveal data-anim-stagger="0.06">&ldquo;${text}&rdquo;</blockquote>
       </div>
     `;
   });

@@ -1,3 +1,5 @@
+// src/embeds/calc-enhance.js
+
 const CALC_BLOCK_REGEX =
   /(?:<p>)?\[calc\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/calc\](?:<\/p>)?/gi;
 
@@ -56,7 +58,7 @@ export function transformCalc(html) {
       : "";
 
     return `
-      <div class="rf-wrap">
+      <div class="blog-embed_wrapper">
         <div class="rt-calc">
           ${blocksHTML}
           ${footerHTML}

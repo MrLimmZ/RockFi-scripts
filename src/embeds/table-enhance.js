@@ -1,3 +1,5 @@
+// src/embeds/table-enhance.js
+
 const TABLE_BLOCK_REGEX =
   /(?:<p>)?\[table(\s+split)?\](?:<\/p>)?([\s\S]*?)(?:<p>)?\[\/table\](?:<\/p>)?/gi;
 
@@ -39,7 +41,7 @@ export function transformTable(html) {
       .join("");
 
     return `
-      <div class="rt-table-wrap rf-wrap">
+      <div class="rt-table-wrap blog-embed_wrapper">
         <table class="rt-table${useSplit ? " rt-table--split" : ""}">
           <thead>${theadHTML}</thead>
           <tbody>${tbodyHTML}</tbody>

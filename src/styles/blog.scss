@@ -1,310 +1,75 @@
-// src/styles/blog.scss
+// ===========================================================================
+// ROCKFI — STYLES DE L'ARTICLE DE BLOG (src/styles/blog.scss)
+// ===========================================================================
+//
+// 1. CONFIGURATION & MIXINS
+// 2. LAYOUT & STRUCTURE
+// 3. UTILITAIRES & ACCESSIBILITÉ
+// 4. RICH-TEXT CONTENT WRAPPERS (.rf-wrap, embeds)
+// 5. COMPOSANTS RICH-TEXT
+//    5.1 Typography Base (.rt-text, .rt-bold)
+//    5.2 Call To Action (.heading-cta-cta-blog)
+//    5.3 Listes Stylisées (.rt-list)
+//    5.4 Cartes de Calcul (.rt-calc)
+//    5.5 Tableaux de Données (table)
+//    5.6 Boutons Custom (.rt-button)
+//    5.7 Citations (.rt-quote, .rt-quote-large)
+//    5.8 Carrousel / Slider (.rt-slider)
+//    5.9 Player Vidéo Plyr (.rt-video)
+// 6. MODULES COMPLÉMENTAIRES (TOC, Toast, FAQ)
+//
+// ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Layout de base
+// 1. CONFIGURATION & MIXINS
 // ---------------------------------------------------------------------------
 
-.content_blog { min-width: 0; }
-.rich-text_blog { min-width: 0; max-width: 100%; }
+$font-sans: Suisseintl, Arial, sans-serif;
+$font-serif: "Reckless Rockfi", Arial, sans-serif;
+$font-meta: "Inter Display", Arial, sans-serif;
 
-// ---------------------------------------------------------------------------
-// Embeds de contenu (tableaux, iframes Finsweet Richtext, .rf-wrap manuelle)
-// ---------------------------------------------------------------------------
-// On ne cible QUE les vrais embeds de contenu (tableaux, iframes ajoutés par
-// Finsweet Richtext) et .rf-wrap (ajoutée à la main). On ne touche plus .w-embed :
-// cette classe est aussi utilisée par Webflow sur des icônes de boutons
-// (voir .cta_blog > .button .icon-1x1-small.w-embed et .icon-embed-cta.w-embed)
-// qu'on ne veut pas affecter.
+$color-black: var(--base-color-brand--black-rockfi, #1a1a1a);
+$color-black-70: var(--base-color-neutral--black-70, rgba(26, 26, 26, 0.7));
+$color-white: var(--base-color-neutral--white, #ffffff);
+$color-border: var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
+$color-bg-beige: var(--base-color-brand--grey-rockfi, #f9f7f3);
 
-.rich-text_blog [data-rt-embed-type],
-.rf-wrap {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-}
-.rf-wrap { margin: 1.25rem 0; }
+$breakpoint-tablet: 991px;
 
-@media screen and (min-width: 992px) {
-  .rich-text_blog [data-rt-embed-type],
-  .rf-wrap { max-width: 794px; margin-left: auto; margin-right: auto; }
-}
-
-// ---------------------------------------------------------------------------
-// CTA imbriqué dans le rich text (fs-richtext-component="cta_blog")
-// ---------------------------------------------------------------------------
-// .rich-text_blog h2 est une règle native Webflow (posée depuis le Designer),
-// donc pas modifiable/supprimable depuis notre SCSS. Le CTA est imbriqué dans
-// .rich-text_blog et hérite de ce style (padding-left/right 7.25rem, font-size
-// 1.38rem…). On la bat en spécificité avec 2 classes (0,2,0) > 1 classe + 1
-// élément (0,1,1), en réécrivant explicitement chaque propriété gênante.
-
-.rich-text_blog .heading-cta-cta-blog {
+// Reset du padding latéral hérité silencieusement des règles RichText Webflow
+%webflow-gutter-reset {
   padding-left: 0;
   padding-right: 0;
-  margin-top: 0;
-  margin-bottom: 0;
-  letter-spacing: -2.24px;
-  font-family: "Reckless Rockfi", Arial, sans-serif;
-  font-size: 2.5rem;
 }
 
 // ---------------------------------------------------------------------------
-// Typographie de base pour les embeds custom (list, quote, calc…)
+// 2. LAYOUT & STRUCTURE
 // ---------------------------------------------------------------------------
-// Reprend la police/couleur de .rich-text_blog p (Suisseintl + black-70),
-// SANS le padding-left/right: 7.25rem propre aux paragraphes — nos blocs rt-*
-// sont pensés pour occuper la largeur du conteneur rf-wrap, pas la colonne
-// étroite du texte courant. À utiliser comme classe de base dans les futurs
-// modules (list-enhance, quote-enhance, calc-enhance…) : <div class="rt-text">.
 
-.rich-text_blog .rt-text {
-  color: var(--base-color-neutral--black-70, rgba(26, 26, 26, 0.7));
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 1.13rem;
-  line-height: 1.5;
+.content_blog {
+  min-width: 0;
 }
 
-// ---------------------------------------------------------------------------
-// Liste ([list] — src/embeds/list-enhance.js)
-// ---------------------------------------------------------------------------
-// Structure flex (bullet + contenu séparés) plutôt que la puce native <li> :
-// permet de colorer le bullet indépendamment et de faire en sorte que le
-// séparateur ne couvre QUE la largeur du texte (.rt-list-content), pas le
-// bullet ni son gap — d'où border-bottom posé sur .rt-list-content, pas sur
-// .rt-list-item. Rythme vertical : 24px de texte à la ligne, 24px de la
-// ligne au texte suivant (padding-top/bottom sur .rt-list-content).
-
-.rich-text_blog .rt-list {
-  list-style: none;
-  margin: 0;
-  padding-left: 0;
-}
-
-.rich-text_blog .rt-list-item {
+.content--left {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding-top: 24px;
-  padding-bottom: 24px;
-}
+  z-index: 2;
 
-.rich-text_blog .rt-list-item:first-child {
-  padding-top: 0;
-}
-
-.rich-text_blog .rt-list-item:last-child {
-  padding-bottom: 0;
-}
-
-.rich-text_blog .rt-list-bullet {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  margin-top: 0.65em; // aligne le point sur la 1ère ligne de texte
-  border-radius: 50%;
-  background-color: var(--text-color--text-primary, var(--base-color-neutral--black, #0f0f0f));
-}
-
-.rich-text_blog .rt-list-content {
-  flex: 1;
-  min-width: 0;
-}
-
-// Séparateur en background (pas en border), sur .rt-list-item lui-même :
-// le left offset saute la colonne du bullet (6px) + le gap (0.75rem), pour
-// que la ligne ne couvre que la largeur du texte, pas toute la row.
-.rich-text_blog .rt-list-item:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: calc(6px + 0.75rem);
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
-}
-
-// [b]...[/b] : couleur foncée seulement, PAS de graisse — le shortcode ne
-// change que la couleur, le reste de la ligne garde le black-70 de .rt-text.
-.rich-text_blog .rt-bold {
-  color: var(--text-color--text-primary, var(--base-color-neutral--black, #0f0f0f));
-}
-
-// ---------------------------------------------------------------------------
-// Calcul ([calc] — src/embeds/calc-enhance.js)
-// ---------------------------------------------------------------------------
-// Card beige avec padding/gap, un .rt-calc-block par "title:", puis un
-// footer optionnel (note après "---") séparé par une bordure haute.
-// --Beige / --Black sont des alias d'export Figma ; mappés vers les vraies
-// variables du :root RockFi qui ont les mêmes valeurs hex
-// (--base-color-brand--grey-rockfi: #f9f7f3, --base-color-brand--black-rockfi: #1a1a1a).
-// padding-left/right à 0 sur les éléments internes (rt-calc-title en h4,
-// rt-calc-line/rt-calc-note en p) : sans ça ils héritent silencieusement du
-// padding-left/right: 7.25rem de .rich-text_blog h4 / .rich-text_blog p, qui
-// matchent aussi ces éléments même à l'intérieur d'un embed.
-
-.rich-text_blog .rt-calc {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  align-self: stretch;
-  gap: 48px;
-  padding: 32px;
-  border-radius: 6px;
-  background: var(--base-color-brand--grey-rockfi, #f9f7f3);
-}
-
-.rich-text_blog .rt-calc-block {
-  width: 100%;
-}
-
-.rich-text_blog .rt-calc-title {
-  margin: 0 0 0.5rem;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 150%; // 27px
-}
-
-.rich-text_blog .rt-calc-line {
-  margin: 0 0 4px;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 150%;
-
-  &:last-child { margin-bottom: 0; }
-}
-
-.rich-text_blog .rt-calc-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  align-self: stretch;
-  gap: 8px;
-  width: 100%;
-  padding: 24px 0 8px;
-  border-top: 1px solid var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
-}
-
-.rich-text_blog .rt-calc-note {
-  margin: 0;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 150%;
-}
-
-// ---------------------------------------------------------------------------
-// Tableaux ([table] / [table split] — src/embeds/table-enhance.js)
-// ---------------------------------------------------------------------------
-// Style "Body/Small" du design system : Suisse Int'l, couleur black-70 /
-// bordures border-primary — variables réelles du :root RockFi. Header sans
-// fond ni radius, juste un trait bas 2px noir. Séparateur 1px sur toutes les
-// lignes (y compris la dernière). 1ère colonne en gras + plus foncée que le
-// reste du texte (text-primary), qu'on soit en mode split (th scope="row")
-// ou simple (td). Un padding-top ajouté à la 1ère ligne du corps pour créer
-// un espace visuel avec le header (une <tr> ne peut pas avoir de margin).
-
-.rich-text_blog table {
-  width: 100%;
-  min-width: 620px;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 15px; // était 13px, jugé trop petit à l'usage
-  font-weight: 400;
-  line-height: 150%;
-  color: var(--base-color-neutral--black-70, rgba(26, 26, 26, 0.7));
-}
-
-.rich-text_blog th {
-  padding: 12px 14px;
-  text-align: left;
-  font-weight: 600;
-  color: var(--text-color--text-primary, var(--base-color-neutral--black, #0f0f0f));
-  border-bottom: 2px solid var(--base-color-brand--black-rockfi, #1a1a1a);
-}
-
-.rich-text_blog td,
-.rich-text_blog th[scope="row"] {
-  padding: 14px;
-  border-bottom: 1px solid var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
-  vertical-align: top;
-  overflow-wrap: anywhere;
-}
-
-.rich-text_blog tbody tr:first-child > * {
-  padding-top: 22px;
-}
-
-.rich-text_blog th:first-child,
-.rich-text_blog td:first-child,
-.rich-text_blog th[scope="row"]:first-child {
-  padding-left: 4px;
-}
-
-.rich-text_blog tbody tr td:first-child,
-.rich-text_blog tbody tr th:first-child {
-  font-weight: 600;
-  color: var(--text-color--text-primary, var(--base-color-neutral--black, #0f0f0f));
-}
-
-@media screen and (max-width: 991px) {
-  .rich-text_blog table { min-width: 560px; }
-  .rich-text_blog th { padding: 9px 10px; }
-  .rich-text_blog td { padding: 10px; }
-}
-
-// ---------------------------------------------------------------------------
-// Toast de copie de lien (src/share-toast.js)
-// ---------------------------------------------------------------------------
-
-.toast-copy {
-  position: fixed;
-  left: 50%;
-  bottom: 2rem;
-  transform: translate(-50%, 1rem);
-  z-index: 9999;
-  padding: 0.75rem 1.25rem;
-  border-radius: 100px;
-  background: var(--base-color-brand--black-rockfi, #1a1a1a);
-  color: var(--base-color-neutral--white, #fff);
-  font-size: 0.875rem;
-  line-height: 1;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-
-  &.is-visible {
-    opacity: 1;
-    transform: translate(-50%, 0);
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: -2rem;
+    width: 100vw;
+    background: $color-white;
+    z-index: -1;
+    pointer-events: none;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Utilitaire accessibilité
+// 3. UTILITAIRES & ACCESSIBILITÉ
 // ---------------------------------------------------------------------------
-// Non utilisée par table-enhance.js depuis qu'on a retiré le caption, mais
-// gardée disponible pour les prochains embeds (quote, list, etc.) si besoin
-// de texte accessible-only.
 
 .sr-only {
   position: absolute;
@@ -318,348 +83,723 @@
   border: 0;
 }
 
-// ---------------------------------------------------------------------------
-// Bouton ([button] — src/embeds/button-enhance.js)
-// ---------------------------------------------------------------------------
-// width: fit-content nécessaire : un <a> en display:flex dans un flow normal
-// (pas un parent flex/grid) s'étire à 100% du conteneur par défaut — sans
-// cette ligne le bouton "aligné à gauche" s'étirerait sur toute la largeur.
-
-.rich-text_blog .rt-button {
-  display: flex;
-  width: fit-content;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.78rem 1.25rem;
-  border-radius: 100vw;
-  background-color: #000;
-  color: var(--base-color-neutral--white, #fff);
-  text-align: center;
-  text-decoration: none;
-  font-weight: 400;
-  transition: all 0.3s;
-
-  &:hover {
-    background-color: var(--base-color-neutral--neutral-darker, #222);
-  }
-}
-
-.rich-text_blog .rt-button-icon {
-  flex: none;
-  width: 16px;
-  height: 16px;
-}
-
-// ---------------------------------------------------------------------------
-// Citation ([quote] — src/embeds/quote-enhance.js)
-// ---------------------------------------------------------------------------
-// padding-left/right:0 sur .rt-quote-text/.rt-quote-name/.rt-quote-role car
-// ce sont des <p> qui matchent sinon .rich-text_blog p (7.25rem de chaque
-// côté) — même piège que pour rt-calc-line/rt-calc-note.
-
-.rich-text_blog .rt-quote {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  align-self: stretch;
-  gap: 24px;
-  margin-top: 32px;
-  padding: 0 32px;
-  border-left: 1px solid var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
-}
-
-.rich-text_blog .rt-quote-text {
-  margin: 0;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 140%; // 28px
-  letter-spacing: -0.2px;
-}
-
-.rich-text_blog .rt-quote-author {
-  display: flex;
-  width: auto;
-  align-items: center;
-  gap: 16px;
-}
-
-.rich-text_blog .rt-quote-avatar {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  aspect-ratio: 1 / 1;
-  border-radius: 48px;
-  object-fit: cover;
-  background-color: var(--base-color-neutral--neutral-lighter, #ccc);
-}
-
-.rich-text_blog .rt-quote-author-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.rich-text_blog .rt-quote-name {
-  margin: 0;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 150%; // 22.5px
-  white-space: nowrap;
-}
-
-.rich-text_blog .rt-quote-role {
-  margin: 0;
-  padding-left: 0;
-  padding-right: 0;
-  color: var(--base-color-neutral--black-70, rgba(26, 26, 26, 0.7));
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 150%; // 19.5px
-  white-space: nowrap;
-}
-
-// ---------------------------------------------------------------------------
-// Grande citation ([quote-large] — src/embeds/quote-large-enhance.js)
-// ---------------------------------------------------------------------------
-// width:612px + text-align:center + margin:0 auto pour centrer le bloc dans
-// le .rf-wrap (794px). padding-left/right:0 au cas où .rich-text_blog
-// blockquote aurait, comme p/h2/h4, un padding natif Webflow.
-
-.rich-text_blog .rt-quote-large {
-  width: 612px;
-  max-width: 100%;
-  margin: 64px auto;
-  padding-left: 0;
-  padding-right: 0;
-  border: none;
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  text-align: center;
-  font-family: "Reckless Rockfi", Arial, sans-serif;
-  font-size: 48px;
-  font-weight: 400;
-  line-height: 110%;
-  letter-spacing: -1.92px;
-}
-
-// ---------------------------------------------------------------------------
-// Slider ([slider] — src/embeds/slider-enhance.js)
-// ---------------------------------------------------------------------------
-
-.rich-text_blog .rt-slider {
-  position: relative;
-  margin: 2rem 0;
-}
-
-.rich-text_blog .rt-slider-track {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 16px;
-  transition: transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: grab;
-  touch-action: pan-y;
-  user-select: none;
-
-  &.is-dragging {
-    cursor: grabbing;
-    transition: none;
-  }
-}
-
-.rich-text_blog .rt-slider-item {
-  flex: 0 0 100%;
-  width: 100%;
-  margin: 0;
-}
-
-.rich-text_blog .rt-slider-item img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 6px;
-  -webkit-user-drag: none;
-  pointer-events: none;
-}
-
-.rich-text_blog .rt-slider-caption {
-  margin-top: 0.5rem;
-  text-align: left;
-  color: var(--base-color-neutral--black-70, rgba(26, 26, 26, 0.7));
-  font-family: Suisseintl, Arial, sans-serif;
-  font-size: 0.875rem;
-}
-
-.rich-text_blog .rt-slider-controls {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.rich-text_blog .rt-slider-prev,
-.rich-text_blog .rt-slider-next {
-  display: flex;
-  width: 48px;
-  height: 48px;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  border-radius: 360px;
-  border: 1px solid var(--border-color--border-primary, rgba(26, 26, 26, 0.12));
-  background: var(--base-color-neutral--white, #fff);
-  color: var(--base-color-brand--black-rockfi, #1a1a1a);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-}
-
-.rich-text_blog .rt-slider-prev svg {
-  transform: scaleX(-1);
-}
-
-// ---------------------------------------------------------------------------
-// Vidéo ([video] — src/embeds/video-enhance.js)
-// ---------------------------------------------------------------------------
-// Player via Plyr (CDN footer). Ratio fixé en 16:9. Overlay custom repris du
-// composant video_blog existant : gradient + bouton glass + texte "Voir la
-// vidéo" + durée, visible tant que la lecture n'a pas démarré. La toolbar
-// Plyr (progress, mute…) reste masquée jusqu'au premier clic play,
-// .is-playing pilote les deux via JS (player.on("play"/"pause")). PAS de
-// .rf-wrap.
-
-.rich-text_blog .rt-video {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  margin: 2rem 0;
-  border-radius: 6px;
+.content_text-2 {
+  display: -webkit-box;
   overflow: hidden;
-
-  --plyr-color-main: #{var(--base-color-brand--black-rockfi, #1a1a1a)};
-  --plyr-video-control-color: #fff;
-  --plyr-video-control-background-hover: rgba(255, 255, 255, 0.1);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.rich-text_blog .rt-video-player,
-.rich-text_blog .rt-video-player video,
-.rich-text_blog .rt-video-player iframe,
-.rich-text_blog .rt-video-player .plyr,
-.rich-text_blog .rt-video-player .plyr__video-wrapper {
+.faq_question-wrapper:focus-visible {
+  outline: 2px solid $color-black;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+// ---------------------------------------------------------------------------
+// 4. RICH-TEXT CONTENT WRAPPERS
+// ---------------------------------------------------------------------------
+
+.rich-text_blog {
+  min-width: 0;
+  max-width: 100%;
+
+  img {
+    border-radius: 6px;
+  }
+
+  // Conteneurs d'embeds (évite l'overflow horizontal sur mobile)
+  [data-rt-embed-type],
+  .rf-wrap {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    margin: 1.25rem 0;
+
+    @media screen and (min-width: 992px) {
+      max-width: 794px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+
+  .blog-embed_wrapper {
+    padding-left: clamp(
+      1rem,
+      calc(1rem + (7.25 - 1) * (100vw - 61.9rem) / (86 - 61.9)),
+      7.25rem
+    );
+    padding-right: clamp(
+      1rem,
+      calc(1rem + (7.25 - 1) * (100vw - 61.9rem) / (86 - 61.9)),
+      7.25rem
+    );
+    margin: 1.25rem 0;
+
+    @media screen and (max-width: $breakpoint-tablet) {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  // =========================================================================
+  // 5. COMPOSANTS RICH-TEXT
+  // =========================================================================
+
+  // 5.1 TYPOGRAPHIE BASE DES MODULES
+  // -------------------------------------------------------------------------
+  .rt-text {
+    color: $color-black-70;
+    font-family: $font-sans;
+    font-size: 1.13rem;
+    line-height: 1.5;
+  }
+
+  .rt-bold {
+    color: var(
+      --text-color--text-primary,
+      var(--base-color-neutral--black, #0f0f0f)
+    );
+  }
+
+  // 5.2 CTA INLINE
+  // -------------------------------------------------------------------------
+  .heading-cta-cta-blog {
+    @extend %webflow-gutter-reset;
+    margin-top: 0;
+    margin-bottom: 0;
+    letter-spacing: -2.24px;
+    font-family: $font-serif;
+    font-size: 2.5rem;
+  }
+
+  // 5.3 LISTES FLUIDES & SÉPARATEURS
+  // -------------------------------------------------------------------------
+  .rt-list {
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+
+    &-item {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 24px 0;
+
+      &:first-child {
+        padding-top: 0;
+      }
+      &:last-child {
+        padding-bottom: 0;
+      }
+
+      &:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        left: calc(6px + 0.75rem);
+        right: 0;
+        bottom: 0;
+        height: 1px;
+        background: $color-border;
+      }
+    }
+
+    &-bullet {
+      flex: none;
+      width: 6px;
+      height: 6px;
+      margin-top: 0.65em;
+      border-radius: 50%;
+      background-color: var(
+        --text-color--text-primary,
+        var(--base-color-neutral--black, #0f0f0f)
+      );
+    }
+
+    &-content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // 5.4 CARTE DE CALCULS
+  // -------------------------------------------------------------------------
+  .rt-calc {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    align-self: stretch;
+    gap: 48px;
+    padding: 32px;
+    border-radius: 6px;
+    background: $color-bg-beige;
+
+    &-block {
+      width: 100%;
+    }
+
+    &-title {
+      @extend %webflow-gutter-reset;
+      margin: 0 0 0.5rem;
+      color: $color-black;
+      font-family: $font-sans;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    &-line {
+      @extend %webflow-gutter-reset;
+      margin: 0 0 4px;
+      color: $color-black;
+      font-family: $font-sans;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.5;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    &-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      align-self: stretch;
+      gap: 8px;
+      width: 100%;
+      padding: 24px 0 8px;
+      border-top: 1px solid $color-border;
+    }
+
+    &-note {
+      @extend %webflow-gutter-reset;
+      margin: 0;
+      color: $color-black;
+      font-family: $font-sans;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+  }
+
+  // 5.5 TABLEAUX DE DONNÉES
+  // -------------------------------------------------------------------------
+  .rt-table-wrap {
+    @media screen and (max-width: $breakpoint-tablet) {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+table {
   width: 100%;
-  height: 100%;
-  display: block;
+  min-width: 620px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: $font-sans;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: $color-black-70;
+
+  @media screen and (max-width: $breakpoint-tablet) {
+    min-width: 560px;
+  }
 }
 
-.rich-text_blog .rt-video-player video {
-  object-fit: cover;
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(
+      --text-color--text-primary,
+      var(--base-color-neutral--black, #0f0f0f)
+    );
+    border-bottom: 2px solid $color-black;
+
+    &:first-child {
+      padding-left: 4px;
+    }
+
+    @media screen and (max-width: $breakpoint-tablet) {
+      padding: 9px 10px;
+    }
+  }
+
+  td,
+  th[scope="row"] {
+    padding: 14px;
+    border-bottom: 1px solid $color-border;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+
+    &:first-child {
+      padding-left: 4px;
+    }
+
+    @media screen and (max-width: $breakpoint-tablet) {
+      padding: 10px;
+    }
+  }
+
+  tbody tr {
+    &:first-child > * {
+      padding-top: 22px;
+    }
+
+    td:first-child,
+    th:first-child {
+      font-weight: 600;
+      color: var(
+        --text-color--text-primary,
+        var(--base-color-neutral--black, #0f0f0f)
+      );
+    }
+  }
+
+  // 5.6 BOUTONS EMBEDDÉS
+  // -------------------------------------------------------------------------
+  .rt-button {
+    display: flex;
+    width: fit-content;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.78rem 1.25rem;
+    border-radius: 100vw;
+    background-color: #000000;
+    color: $color-white;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 400;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: var(--base-color-neutral--neutral-darker, #222222);
+    }
+
+    &-icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  // 5.7 CITATIONS (PETITES & GRANDES)
+  // -------------------------------------------------------------------------
+  .rt-quote {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+    gap: 24px;
+    margin-top: 32px;
+    padding: 0 32px;
+    border-left: 1px solid $color-border;
+
+    &-text {
+      @extend %webflow-gutter-reset;
+      margin: 0;
+      color: $color-black;
+      font-family: $font-sans;
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.4;
+      letter-spacing: -0.2px;
+    }
+
+    &-author {
+      display: flex;
+      width: auto;
+      align-items: center;
+      gap: 16px;
+
+      &-info {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    &-avatar {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      aspect-ratio: 1 / 1;
+      border-radius: 48px;
+      object-fit: cover;
+      background-color: var(--base-color-neutral--neutral-lighter, #cccccc);
+    }
+
+    &-name {
+      @extend %webflow-gutter-reset;
+      margin: 0;
+      color: $color-black;
+      font-family: $font-sans;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+
+    &-role {
+      @extend %webflow-gutter-reset;
+      margin: 0;
+      color: $color-black-70;
+      font-family: $font-sans;
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+  }
+
+  .rt-quote-large {
+    @extend %webflow-gutter-reset;
+    width: 612px;
+    max-width: 100%;
+    margin: 64px auto;
+    border: none;
+    color: $color-black;
+    text-align: center;
+    font-family: $font-serif;
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -1.92px;
+  }
+
+  // 5.8 CARROUSEL / SLIDER
+  // -------------------------------------------------------------------------
+  .rt-slider {
+    position: relative;
+    margin: 2rem 0;
+
+    &-track {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 16px;
+      transition: transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: grab;
+      touch-action: pan-y;
+      user-select: none;
+
+      &.is-dragging {
+        cursor: grabbing;
+        transition: none;
+      }
+    }
+
+    &-item {
+      flex: 0 0 100%;
+      width: 100%;
+      margin: 0;
+
+      img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        border-radius: 6px;
+        -webkit-user-drag: none;
+        pointer-events: none;
+      }
+    }
+
+    &-caption {
+      margin-top: 0.5rem;
+      text-align: left;
+      color: $color-black-70;
+      font-family: $font-sans;
+      font-size: 0.875rem;
+    }
+
+    &-controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    &-prev,
+    &-next {
+      display: flex;
+      width: 48px;
+      height: 48px;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      border-radius: 360px;
+      border: 1px solid $color-border;
+      background: $color-white;
+      color: $color-black;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    &-prev svg {
+      transform: scaleX(-1);
+    }
+  }
+
+  // 5.9 PLAYER VIDÉO PLYR & OVERLAY CUSTOM
+  // -------------------------------------------------------------------------
+  .rt-video {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    margin: 2rem 0;
+    border-radius: 6px;
+    overflow: hidden;
+
+    --plyr-color-main: #{$color-black};
+    --plyr-video-control-color: #{$color-white};
+    --plyr-video-control-background-hover: rgba(255, 255, 255, 0.1);
+
+    &-player {
+      &,
+      video,
+      iframe,
+      .plyr,
+      .plyr__video-wrapper {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      video {
+        object-fit: cover;
+      }
+
+      .plyr__poster {
+        background-size: cover;
+        background-position: center;
+      }
+    }
+
+    &:not(.is-playing) .plyr__controls {
+      display: none;
+    }
+
+    &.is-playing .rt-video-overlay {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &-overlay {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+
+      .rt-video-play-glass,
+      .rt-video-cta {
+        pointer-events: auto;
+      }
+    }
+
+    &-gradient {
+      position: absolute;
+      inset: 0;
+      background: var(
+        --Gradient-overlay,
+        linear-gradient(180deg, rgba(42, 35, 29, 0) 19.44%, #2a231d 82.42%)
+      );
+      mix-blend-mode: hard-light;
+    }
+
+    &-cta {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      &-meta {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      &-text {
+        color: $color-white;
+      }
+
+      &-duration {
+        color: var(--white-50, rgba(255, 255, 255, 0.5));
+        text-align: center;
+        font-family: $font-meta;
+        font-size: 15px;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+    }
+
+    &-play-glass {
+      color: $color-black;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 3rem;
+      height: 3rem;
+      border: 1px solid rgba(26, 26, 26, 0.12);
+      border-radius: 100%;
+      padding: 0;
+      box-shadow: none;
+      backdrop-filter: blur(3rem);
+      background: transparent;
+      transition:
+        background-color 0.2s ease,
+        transform 0.2s ease;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: scale(1.06);
+      }
+    }
+  }
 }
 
-.rich-text_blog .rt-video-player .plyr__poster {
-  background-size: cover;
-  background-position: center;
+// ---------------------------------------------------------------------------
+// 6. MODULES COMPLÉMENTAIRES
+// ---------------------------------------------------------------------------
+
+// Sommaire (TOC)
+// -----------------------------------------------------------------------
+// .toc-wrapper_inner porte le gap entre chaque lien — c'est le vrai
+// conteneur généré par blog-toc.js (buildLinks()). En base (pas juste
+// mobile) pour que l'espacement soit cohérent desktop + mobile.
+.toc-wrapper_inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-// Toolbar Plyr masquée tant que la vidéo n'a pas démarré.
-.rich-text_blog .rt-video:not(.is-playing) .plyr__controls {
+// Chevron caché par défaut (desktop) : ne doit apparaître que sur le
+// déclencheur mobile/tablette (voir media query plus bas).
+.toc-chevron {
   display: none;
 }
 
-.rich-text_blog .rt-video-overlay {
-  position: absolute;
-  inset: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none; // laisse les clics passer au <video>/iframe en dessous une fois masqué
+.toc_link {
+  display: block;
+  text-decoration: none;
 
-  .rt-video-play-glass,
-  .rt-video-cta {
-    pointer-events: auto; // réactive les clics uniquement sur le bouton/CTA
+  &.w--current {
+    color: #4c4c4c;
+    border-left: 2px solid #4c4c4c;
+    padding: 0 0 0 0.5em;
+
+    & > * {
+      font-weight: 400 !important;
+    }
+
+    .toc_link-text {
+      color: $color-black;
+      font-weight: 600;
+    }
   }
 }
 
-.rich-text_blog .rt-video.is-playing .rt-video-overlay {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.rich-text_blog .rt-video-gradient {
-  position: absolute;
-  inset: 0;
-  background: var(
-    --Gradient-overlay,
-    linear-gradient(180deg, rgba(42, 35, 29, 0) 19.44%, #2a231d 82.42%)
-  );
-  mix-blend-mode: hard-light;
-}
-
-.rich-text_blog .rt-video-cta {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.rich-text_blog .rt-video-play-glass {
-  color: rgb(26, 26, 26);
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 3rem;
-  height: 3rem;
-  border: 1px solid rgba(26, 26, 26, 0.12);
-  border-radius: 100%;
-  padding: 0;
-  box-shadow: none;
-  backdrop-filter: blur(3rem);
-  background: transparent;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    transform: scale(1.06);
+@media screen and (max-width: $breakpoint-tablet) {
+  .content_sidebar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "date social"
+      "toc toc";
+    align-items: center;
+    row-gap: 1.5rem;
   }
-}
 
-.rich-text_blog .rt-video-cta-meta {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  column-gap: 0.5rem;
-  row-gap: 0.5rem;
-}
+  .content_sidebar > .content_sidebar_date {
+    grid-area: date;
+    margin-bottom: 0;
+  }
 
-.rich-text_blog .rt-video-cta-text {
-  color: var(--base-color-neutral--white, #fff);
-}
+  .content_sidebar > .toc {
+    grid-area: toc;
+  }
 
-.rich-text_blog .rt-video-cta-duration {
-  color: var(--white-50, rgba(255, 255, 255, 0.5));
-  text-align: center;
-  font-family: "Inter Display", Arial, sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 140%; // 21px
-}
+  .content_sidebar > .margin-bottom.margin-medium {
+    grid-area: social;
+    margin-bottom: 0;
+  }
 
-.rich-text_blog img {
-  border-radius: 6px;
+  .toc {
+    border: none;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  .toc-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 1px solid $color-border;
+    border-radius: 6px;
+    user-select: none;
+  }
+
+  .toc-heading .toc-chevron {
+    display: inline-flex;
+    flex: none;
+    color: $color-black;
+    transition: transform 0.2s ease;
+  }
+
+  .toc.is-open .toc-heading .toc-chevron {
+    transform: rotate(180deg);
+  }
+
+  .toc-wrapper {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+  }
+
+  .toc.is-open .toc-wrapper {
+    grid-template-rows: 1fr;
+  }
+
+  // Désactive temporairement la transition d'ouverture/fermeture le temps
+  // d'un reflow forcé (voir closeTocInstant() dans blog-toc.js) — évite
+  // l'incohérence de position causée par le calcul de scroll pendant que
+  // le menu est encore visuellement ouvert.
+  .toc.no-transition .toc-wrapper {
+    transition: none;
+  }
+
+  .toc-wrapper_inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .toc_link {
+    padding: 10px 16px;
+  }
 }

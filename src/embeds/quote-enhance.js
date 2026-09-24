@@ -1,3 +1,4 @@
+// src/embeds/quote-enhance.js
 import { parseAttrs } from "../utils/parse-attrs.js";
 
 const QUOTE_BLOCK_REGEX =
@@ -30,7 +31,7 @@ export function transformQuote(html) {
         : "";
 
     return `
-      <div class="rf-wrap">
+      <div class="blog-embed_wrapper">
         <div class="rt-quote">
           <p class="rt-quote-text">&ldquo;${text}&rdquo;</p>
           ${authorHTML}

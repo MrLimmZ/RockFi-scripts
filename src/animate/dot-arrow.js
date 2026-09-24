@@ -1,38 +1,4 @@
 // src/animate/dot-arrow.js
-// Anime une "flèche rapide" par-dessus l'icône à 9 points (3x3), déclenchée
-// au survol (hover) du bouton/lien parent. Chaque segment se dessine en 2
-// phases : d'abord son EXTRÉMITÉ (x2,y2) avance vers le point d'arrivée
-// (le trait grandit), puis son DÉBUT (x1,y1) la rattrape (le trait se
-// résorbe sur place) — le segment semble voyager puis disparaître sur sa
-// cible, plutôt que de repartir en arrière.
-//
-// Couleur : lue directement depuis le fill du premier point PLEIN trouvé
-// dans le SVG (fill-opacity absent ou = 1), pas depuis un data-attribute
-// fixe — donc si l'icône change de couleur (variante blanche sur fond
-// sombre, currentColor...), la flèche s'adapte automatiquement sans rien
-// dupliquer côté HTML. data-arrow-color reste un fallback explicite si
-// aucun point plein n'est détecté.
-//
-// Effet "comète" : chaque trait est peint avec un gradient (transparent à
-// la queue, opaque à la tête), recalculé à chaque frame pour suivre les
-// coordonnées réelles du trait, qui bougent pendant l'animation.
-//
-// Séquence : 1) le trait du milieu (gauche→droite) voyage et se résorbe sur
-// le point droit, 2) les deux branches (droite→haut, droite→bas) voyagent
-// et se résorbent EXACTEMENT en même temps (label partagé).
-//
-// Déclenchement : mouseenter sur le plus proche <a> ou <button> ancêtre du
-// SVG relance l'animation depuis le début à chaque survol (tl.restart()).
-//
-// Coordonnées codées en dur : cette icône (9 cercles, viewBox 0 0 16 16)
-// est réutilisée identique à plusieurs endroits du site.
-//
-// Usage HTML : ajouter data-dot-arrow directement sur la balise <svg>,
-// à l'intérieur d'un <a> ou <button>.
-// Options (data-attributes sur le <svg>) :
-//   data-arrow-color="#1A1A1A"        fallback si aucun point plein détecté
-//   data-arrow-stage1-duration="0.5"  durée totale du trait milieu (2 phases)
-//   data-arrow-stage2-duration="0.45" durée totale des 2 branches (2 phases)
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -42,9 +8,6 @@ const TOP_MID = { x: 8.00427, y: 2.08142 };
 const BOTTOM_MID = { x: 8.00427, y: 13.9174 };
 const DOT_RADIUS = 1.31507;
 
-// Cherche le premier <circle> à opacité pleine (pas de fill-opacity, ou
-// fill-opacity="1") et renvoie sa couleur calculée réelle — résout aussi
-// currentColor en la vraie couleur héritée, via getComputedStyle.
 function getFullDotColor(svg, fallback) {
   const circles = Array.from(svg.querySelectorAll("circle"));
   const fullCircle = circles.find((c) => {

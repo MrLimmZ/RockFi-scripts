@@ -1,0 +1,55 @@
+// ---------------------------------------------------------------------------
+// FOCUS STORIES — src/focus-stories.js
+// ---------------------------------------------------------------------------
+
+// -------------------------------------------------------- image wrapper --
+.focus-card_image-wrapper {
+  position: relative;
+  overflow: hidden; // les images qui glissent ne doivent jamais déborder du cadre
+}
+
+.focus-card_image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+  transform: translateX(0);
+  pointer-events: none;
+}
+
+// Nouvelle image : démarre hors cadre à droite, collée au bord.
+.focus-card_image.is-entering {
+  transform: translateX(100%);
+}
+
+// Nouvelle image : glisse jusqu'à sa position finale.
+.focus-card_image.is-active {
+  transform: translateX(0);
+}
+
+// Ancienne image : glisse hors du wrapper vers la gauche, au même rythme —
+// les deux bords restent collés pendant tout le mouvement (aucun espace
+// vide, aucun fondu d'opacité).
+.focus-card_image.is-leaving {
+  transform: translateX(-100%);
+}
+
+// ----------------------------------------------------- barre de progression --
+// La couleur de fond de .focus-card_progress-step est déjà définie côté
+// Designer Webflow — on n'y touche pas ici. Seul le fill (la portion qui
+// progresse, injectée en JS) est stylé par ce bloc.
+.focus-card_progress-step {
+  position: relative;
+  overflow: hidden;
+}
+
+.focus-card_progress-fill {
+  position: absolute;
+  inset: 0;
+  background: #1a1a1a;
+  transform: scaleX(0);
+  transform-origin: left center;
+  border-radius: inherit; // hérite les coins arrondis du step parent
+}

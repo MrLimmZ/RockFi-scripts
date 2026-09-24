@@ -67,39 +67,38 @@ export const PRESETS = {
 // l'ampleur du nombre.
 "count-up": (el, opts) => {
   const rawText = el.textContent.trim();
-  const match = rawText.match(/^([\d\s]+)(.*)$/); // groupe 1 = chiffres/espaces, groupe 2 = tout le reste (suffixe)
-  if (!match) return window.gsap.timeline(); // pas de nombre trouvé, no-op sûr
+  // Groupe 1 = préfixe éventuel, Groupe 2 = chiffres/espaces, Groupe 3 = suffixe éventuel
+  const match = rawText.match(/^(.*?)(\d[\d\s]*)(.*)$/);
+  if (!match) return window.gsap.timeline();
 
-  const targetNumber = parseInt(match[1].replace(/\s/g, ""), 10);
-  const suffix = match[2];
+  const prefix = match[1];
+  const digitsGroup = match[2];
+  const suffix = match[3];
 
+  const targetNumber = parseInt(digitsGroup.replace(/\s/g, ""), 10);
   if (isNaN(targetNumber)) return window.gsap.timeline();
 
   const NICE_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-  const idealStep = targetNumber / 40; // ~40 paliers du début à la fin, quel que soit le nombre
+  const idealStep = targetNumber / 40;
   const step = NICE_STEPS.find((s) => s >= idealStep) || NICE_STEPS[NICE_STEPS.length - 1];
 
   const counter = { value: 0 };
-  el.textContent = "0" + suffix;
+  el.textContent = `${prefix}0${suffix}`;
 
   return window.gsap.to(counter, {
     value: targetNumber,
-    duration: opts.duration ?? 1.5,
-    delay: opts.delay ?? 0,
-    ease: opts.ease ?? "power1.out",
+    duration: opts?.duration ?? 1.5,
+    delay: opts?.delay ?? 0,
+    ease: opts?.ease ?? "power1.out",
     onUpdate: () => {
-      // Arrondit au multiple du pas le plus proche, sans jamais dépasser
-      // targetNumber (dernier tick garanti = valeur finale exacte).
       const stepped = Math.min(Math.round(counter.value / step) * step, targetNumber);
-      const formatted = match[1].includes(" ")
+      const formatted = digitsGroup.includes(" ")
         ? stepped.toLocaleString("fr-FR").replace(/,/g, " ").replace(/\u202f/g, " ")
         : String(stepped);
-      el.textContent = formatted + suffix;
+
+      el.textContent = `${prefix}${formatted}${suffix}`;
     },
     onComplete: () => {
-      // Filet de sécurité : garantit l'affichage exact de la valeur finale
-      // d'origine (avec son formatage/espace tel quel), au cas où
-      // l'arrondi par palier laisserait un écart au dernier frame.
       el.textContent = rawText;
     },
   });

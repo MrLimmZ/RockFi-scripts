@@ -83,7 +83,8 @@ export function initFocusStories(root = document) {
     const steps = buildProgressSteps(progressEl, slides.length);
 
     let index = 0;
-    let timer = null;
+    let progressTween = null;
+    let isInView = false;
 
     function swapImage(newSrc, newAlt) {
       if (!imgWrapper || !currentImg) return;
@@ -160,50 +161,92 @@ export function initFocusStories(root = document) {
         ctaText.textContent = ctaTemplate.replace("{name}", slide.firstName || "");
       }
 
-      // footerTop.innerHTML vient d'être régénéré : le <svg data-dot-arrow>
-      // qu'il contenait a été détruit et recréé, donc son mouseenter et ses
-      // lignes GSAP n'existent plus — on réinitialise l'animation
-      // uniquement sur ce nouveau contenu (root = footerTop), pas sur tout
-      // le document, pour ne pas retoucher les autres icônes déjà
-      // correctement initialisées ailleurs sur la page.
       if (footerTop) initDotArrow(footerTop);
 
       animateTitle();
       animateQuote();
     }
 
-    function updateProgress(i) {
+    function startProgress(i) {
       if (!steps.length) return;
+
+      // 1. Tuer l'animation précédente si existante
+      if (progressTween) {
+        progressTween.kill();
+        progressTween = null;
+      }
+
+      // 2. Mettre à jour l'état visuel de chaque étape
       steps.forEach((step, si) => {
         const fill = step.querySelector(".focus-card_progress-fill");
-        fill.style.transition = "none";
-        fill.style.transform = si < i ? "scaleX(1)" : "scaleX(0)";
+        if (si < i) {
+          window.gsap.set(fill, { scaleX: 1, transformOrigin: "left center" });
+        } else if (si > i) {
+          window.gsap.set(fill, { scaleX: 0, transformOrigin: "left center" });
+        }
       });
 
       const currentFill = steps[i].querySelector(".focus-card_progress-fill");
-      void currentFill.offsetWidth;
-      currentFill.style.transition = `transform ${duration}s linear`;
-      currentFill.style.transform = "scaleX(1)";
+      window.gsap.set(currentFill, { scaleX: 0, transformOrigin: "left center" });
+
+      // 3. Animer la barre courante avec GSAP (permet pause/reprise précise)
+      progressTween = window.gsap.to(currentFill, {
+        scaleX: 1,
+        duration: duration,
+        ease: "none",
+        paused: !isInView, // Reste en pause tant que pas dans le viewport
+        onComplete: next,
+      });
     }
 
     function showSlide(i) {
       applySlide(i);
-      updateProgress(i);
+      startProgress(i);
     }
 
     function next() {
       index = (index + 1) % slides.length;
       showSlide(index);
-      restart();
     }
 
-    function restart() {
-      clearTimeout(timer);
-      timer = setTimeout(next, duration * 1000);
-    }
-
+    // Initialise le 1er slide (visuel prêt)
     applySlide(index);
-    updateProgress(index);
-    restart();
+
+    // Initialise les barres (première prête à 0)
+    steps.forEach((step, si) => {
+      const fill = step.querySelector(".focus-card_progress-fill");
+      window.gsap.set(fill, { scaleX: si < index ? 1 : 0, transformOrigin: "left center" });
+    });
+
+    startProgress(index);
+
+    // Contrôle via ScrollTrigger : pause hors écran, lecture dans l'écran
+    if (typeof window.ScrollTrigger !== "undefined") {
+      window.ScrollTrigger.create({
+        trigger: section,
+        start: "top 90%",
+        end: "bottom 10%",
+        onEnter: () => {
+          isInView = true;
+          if (progressTween) progressTween.play();
+        },
+        onLeave: () => {
+          isInView = false;
+          if (progressTween) progressTween.pause();
+        },
+        onEnterBack: () => {
+          isInView = true;
+          if (progressTween) progressTween.play();
+        },
+        onLeaveBack: () => {
+          isInView = false;
+          if (progressTween) progressTween.pause();
+        },
+      });
+    } else {
+      // Fallback si ScrollTrigger n'est pas dispo
+      isInView = true;
+      if (progressTween) progressTween.play();
+    }
   });
 }

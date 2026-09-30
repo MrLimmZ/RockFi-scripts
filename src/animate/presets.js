@@ -40,17 +40,16 @@ export const PRESETS = {
 
   // Reveal d'image façon "rideau" simple (scale + fondu) : l'élément doit
   // avoir un wrapper avec overflow:hidden côté CSS (ex: .image_blog).
-"image-reveal": (el, opts) => {
-  const distance = `${opts.distance ?? 1.5}rem`;
-  window.gsap.set(el, { y: distance, opacity: 0.6 });
-  return window.gsap.to(el, {
-    y: 0,
-    opacity: 1,
-    duration: opts.duration ?? 2,
-    delay: opts.delay ?? 0,
-    ease: opts.ease ?? "power3.out",
-  });
-},
+  "image-reveal": (el, opts) => {
+    const distance = `${opts.distance ?? 1.5}rem`;
+    window.gsap.set(el, { y: distance });
+    return window.gsap.to(el, {
+      y: 0,
+      duration: opts.duration ?? 2,
+      delay: opts.delay ?? 0,
+      ease: opts.ease ?? "power3.out",
+    });
+  },
 
 // Anime un nombre de 0 jusqu'à sa valeur finale, avec un pas d'incrément qui
 // s'adapte à la magnitude du nombre — un grand nombre (ex: 1500) compte par

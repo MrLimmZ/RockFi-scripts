@@ -6,19 +6,22 @@
 // src/animate/svg-trace.js (gradient recalculé à chaque frame).
 //
 // Séquence complète pour chaque tag : 0) apparition — la longueur grandit
-// de 0 à segmentLength, en douceur (ease "power1.in" : démarre lentement,
-// accélère — évite un saut visuel initial) — 1) trajet — la tête avance de
-// 0 à totalLength en travelDuration secondes FIXES, peu importe le
+// de 0 à segmentLength, en douceur (ease "power1.in") — 1) trajet — la tête
+// avance de 0 à totalLength en travelDuration secondes FIXES, peu importe le
 // périmètre du tag — 2) résorption — la tête reste fixe, la longueur
 // décroît à 0 rapidement (pas de fondu d'opacité).
 //
-// Enchaînement séquentiel entre tags : quand plusieurs .tag-animated
-// partagent un ancêtre commun, chacun démarre APRÈS que le précédent ait
-// entièrement terminé (trajet + résorption + pause) — le délai est la
-// somme des durées complètes de tous les tags qui le précèdent.
+// Enchaînement entre tags : les tags qui apparaissent ENSEMBLE à l'écran
+// (même lot d'IntersectionObserver) sont triés de haut en bas puis de
+// gauche à droite. Chacun démarre `stagger` secondes après le précédent,
+// SANS attendre sa fin : les animations se chevauchent avec un léger
+// décalage de lancement. Le délai est plafonné à MAX_DELAY.
 //
 // Déclenchée la première fois que le tag devient visible à l'écran
-// (IntersectionObserver, seuil 40%, une seule fois par tag).
+// (IntersectionObserver, seuil 10%, une seule fois par tag). Les tags
+// ajoutés après coup (Finsweet, "load more", filtres) sont pris en compte
+// via un MutationObserver. Un tag non mesurable (masqué, largeur 0) n'est
+// pas marqué comme traité : il pourra être réessayé au prochain rendu.
 //
 // Le rayon du rect est plafonné à height/2 : un border-radius CSS très
 // supérieur à cette limite (ex: 999px pour un effet "pilule") produit
@@ -38,9 +41,11 @@
 //   data-tag-trace-end-duration="0.15" durée de la résorption finale, en secondes
 //   data-tag-trace-color="#1A1A1A"    couleur du trait
 //   data-tag-trace-width="1"          épaisseur du trait, en px
-//   data-tag-trace-stagger="0.1"      pause entre la fin d'un tag et le début du suivant, en secondes
+//   data-tag-trace-stagger="0.12"     décalage de lancement entre deux tags, en secondes
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const DEFAULT_STAGGER = 0.12; // décalage de lancement entre deux tags (s), les animations se chevauchent
+const MAX_DELAY = 3; // garde-fou pour les très longues listes
 
 function createFadeGradient(svg, color) {
   const gradientId = `tag-trace-${Math.random().toString(36).slice(2, 9)}`;
@@ -101,25 +106,14 @@ function buildTraceSvg(tag) {
   return { svg, rect };
 }
 
-function siblingIndex(tag) {
-  let ancestor = tag.parentElement;
-
-  while (ancestor) {
-    const matches = Array.from(ancestor.querySelectorAll(".tag-animated"));
-    if (matches.length > 1) {
-      return matches.indexOf(tag);
-    }
-    ancestor = ancestor.parentElement;
-  }
-
-  return 0;
-}
-
-function animateTag(tag) {
+function animateTag(tag, delay = 0) {
   if (typeof window.gsap === "undefined") return;
+  if (tag.dataset.tagTraced) return;
 
   const built = buildTraceSvg(tag);
-  if (!built) return;
+  if (!built) return; // pas mesurable : sera réessayé au prochain rendu
+  tag.dataset.tagTraced = "1";
+
   const { svg, rect } = built;
 
   if (getComputedStyle(tag).position === "static") {
@@ -136,8 +130,6 @@ function animateTag(tag) {
   const travelDuration = parseFloat(tag.dataset.tagTraceDuration) || 0.5;
   const endDuration = parseFloat(tag.dataset.tagTraceEndDuration) || 0.15;
   const color = tag.dataset.tagTraceColor || "#1A1A1A";
-  const gap = parseFloat(tag.dataset.tagTraceStagger) || 0.1;
-  const delay = siblingIndex(tag) * (travelDuration + endDuration + gap);
 
   const { gradient } = createFadeGradient(svg, color);
 
@@ -164,9 +156,6 @@ function animateTag(tag) {
   const tl = window.gsap.timeline({ delay });
 
   // Phase 0 — apparition : la longueur grandit de 0 à segmentLength.
-  // "power1.in" démarre lentement et accélère — évite le saut visuel
-  // initial que produisait "power1.out" (qui atteint quasi sa valeur
-  // finale dès les premières millisecondes).
   const growProxy = { len: 0 };
   tl.to(growProxy, {
     len: segmentLength,
@@ -179,8 +168,7 @@ function animateTag(tag) {
     },
   });
 
-  // Phase 1 — trajet principal : la tête avance de 0 à totalLength, en
-  // travelDuration secondes fixes, quelle que soit la valeur de totalLength.
+  // Phase 1 — trajet principal : la tête avance de 0 à totalLength.
   const travelProxy = { pos: 0 };
   tl.to(travelProxy, {
     pos: totalLength,
@@ -193,8 +181,7 @@ function animateTag(tag) {
     },
   });
 
-  // Phase 2 — résorption : la tête reste fixe à totalLength, la longueur
-  // décroît de segmentLength à 0 (pas de fondu d'opacité).
+  // Phase 2 — résorption : la tête reste fixe, la longueur décroît à 0.
   const shrinkProxy = { len: segmentLength };
   tl.to(shrinkProxy, {
     len: 0,
@@ -211,23 +198,63 @@ function animateTag(tag) {
   tl.call(() => svg.remove());
 }
 
-function initTagReveal() {
-  const tags = document.querySelectorAll(".tag-animated");
-  if (!tags.length || typeof window.gsap === "undefined") return;
+function initTagReveal(root = document) {
+  if (typeof window.gsap === "undefined") return;
+
+  const observed = new WeakSet();
+  let queueIndex = 0;
+  let resetTimer = null;
 
   const observer = new IntersectionObserver(
     (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          animateTag(entry.target);
-          observer.unobserve(entry.target);
-        }
+      const visible = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => {
+          const ra = a.target.getBoundingClientRect();
+          const rb = b.target.getBoundingClientRect();
+          return ra.top - rb.top || ra.left - rb.left;
+        });
+
+      visible.forEach((entry) => {
+        const tag = entry.target;
+        observer.unobserve(tag);
+
+        const stagger = parseFloat(tag.dataset.tagTraceStagger) || DEFAULT_STAGGER;
+
+        // Chaque tag démarre `stagger` secondes après le précédent, sans attendre sa fin
+        const delay = Math.min(queueIndex * stagger, MAX_DELAY);
+        queueIndex += 1;
+
+        animateTag(tag, delay);
+
+        // Tag non mesurable (masqué) : on le remet en observation pour un
+        // prochain rendu au lieu de le perdre.
+        if (!tag.dataset.tagTraced) observed.delete(tag);
       });
+
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        queueIndex = 0;
+      }, 300);
     },
-    { threshold: 0.4 },
+    { threshold: 0.1 },
   );
 
-  tags.forEach((tag) => observer.observe(tag));
+  function observeAll(scope) {
+    scope.querySelectorAll(".tag-animated").forEach((tag) => {
+      if (observed.has(tag) || tag.dataset.tagTraced) return;
+      observed.add(tag);
+      observer.observe(tag);
+    });
+  }
+
+  observeAll(root);
+
+  // Tags ajoutés après coup (Finsweet, "load more", filtres)
+  new MutationObserver(() => observeAll(document)).observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 }
 
 export { initTagReveal };

@@ -23,7 +23,6 @@ console.log(`%c[RockFi] main.js — build v1.0.1 ${BUILD_VERSION}`, "color:#7dd3
 onReady(() => {
   initCore();
   initCollapses();
-  initTagReveal();
   initBlogAccordion();
   initBlogFaq();
   initShareToast();
@@ -36,5 +35,6 @@ onReady(() => {
   initListLenisSync();
   initFocusStories();
   initDotArrow();
+  initTagReveal();
   initNameTokens();
 });

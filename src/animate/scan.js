@@ -236,8 +236,16 @@ export function scanAnimations(root = document) {
     if (!preset) return;
 
     const opts = readOpts(el);
-    const staggerStep = opts.stagger ?? 0.08;
-    const extraDelay = Math.min(siblingIndex(el) * staggerStep, 0.3);
+
+    // Réglages de décalage par preset : seul count-up est décalé plus fort,
+    // tous les autres presets gardent exactement l'ancien comportement.
+    const STAGGER_BY_PRESET = {
+      "count-up": { step: 0.25, max: 1 },
+    };
+    const cfg = STAGGER_BY_PRESET[presetName] || { step: 0.08, max: 0.3 };
+
+    const staggerStep = opts.stagger ?? cfg.step;
+    const extraDelay = Math.min(siblingIndex(el) * staggerStep, cfg.max);
     opts.delay = (opts.delay ?? 0) + extraDelay;
 
     const animation = preset(el, opts);

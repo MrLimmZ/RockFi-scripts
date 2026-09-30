@@ -1,11 +1,17 @@
-// src/animate/index.js
 import { prefersReducedMotion } from "../utils/motion-preference.js";
 import { setupGsap } from "./setup.js";
 import { scanAnimations } from "./scan.js";
+import { initParallax } from "./parallax.js";
+import { initHeroParallax } from "./hero-parallax.js";
+import { initBlurPlaceholders } from "./blur-placeholder.js";
 
 export function initAnimations(root = document) {
-  if (prefersReducedMotion()) return; // pas d'animation, contenu visible tel quel par défaut (opacity:1 non touché)
+  initBlurPlaceholders(root);
+
+  if (prefersReducedMotion()) return;
 
   setupGsap();
   scanAnimations(root);
+  initParallax(root);
+  initHeroParallax(root);
 }

@@ -10,3 +10,111 @@
   content: none;
   display: none;
 }
+
+/* ---- Section vidéo ---- */
+.video_media[data-video-player] {
+  cursor: default;
+}
+.video_player-holder .plyr,
+.video_player-holder .plyr__volume,
+.rt-video .plyr__volume {
+  --plyr-range-fill-background: #f0ff4d;
+}
+.video_player-holder .plyr,
+.rt-video .plyr {
+  --plyr-color-main: #1a1a1a;
+}
+.video_player-holder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #000;
+}
+.video_player-holder .plyr,
+.video_player-holder .plyr__video-wrapper,
+.video_player-holder video {
+  width: 100%;
+  height: 100%;
+}
+.video_player-holder video {
+  object-fit: contain;
+}
+
+/* Bouton "Voir la vidéo" (groupe icône + texte + durée) :
+   masqué par défaut, visible quand la souris est dans la section */
+.video_controller {
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(0.5rem);
+  /* Effet magnétique (piloté par le JS) : indépendant de `transform` */
+  translate: var(--mx, 0px) var(--my, 0px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.video_layout:hover .video_controller,
+.video_layout:focus-within .video_controller {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s;
+}
+
+/* Lecture en cours : le bouton reste masqué */
+.video_layout.is-playing .video_controller,
+.video_layout.is-playing:hover .video_controller,
+.video_layout.is-playing:focus-within .video_controller {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Durée : apparaît en fondu une fois connue */
+[data-video-timer] {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+[data-video-timer].is-ready {
+  opacity: 1;
+}
+
+/* Écrans tactiles (pas de survol) : le bouton reste visible */
+@media (hover: none) {
+  .video_layout:not(.is-playing) .video_controller {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+/* ---- Nav transparente : état après le hero ---- */
+.navbar_component,
+.navbar_component .logo-navbar,
+.navbar_component .navbar_link,
+.navbar_component .dropdown-toggle,
+.navbar_component .button.is-secondary {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.nav_fixed.is-past-hero .navbar_component {
+  background-color: #fff;
+}
+
+.nav_fixed.is-past-hero .logo-navbar,
+.nav_fixed.is-past-hero .navbar_link,
+.nav_fixed.is-past-hero .dropdown-toggle {
+  color: var(--base-color-brand--black-rockfi);
+}
+
+.nav_fixed.is-past-hero .navbar_component .button.is-secondary {
+  color: var(--base-color-brand--black-rockfi);
+  border-color: var(--border-color--border-alternate) var(--border-color--border-alternate) #1a1a1a1f;
+}
+
+.nav_fixed.is-past-hero .navbar_component .button.is-secondary:hover {
+  border-bottom-color: var(--base-color-brand--black-rockfi);
+}

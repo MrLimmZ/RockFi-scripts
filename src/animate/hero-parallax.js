@@ -1,4 +1,18 @@
 // src/animate/hero-parallax.js
+// Parallax pour la bannière de haut de page (hero), sans scale.
+// L'image est calée sur le haut du conteneur, dépasse au-dessus de la
+// distance exacte qu'elle va parcourir, et descend légèrement pendant le
+// scroll : elle ne suit la page qu'à moitié (effet de profondeur), sans
+// jamais révéler de vide. Au repos, le cadrage est identique à une image
+// normale (aucun décalage visible).
+//
+// Usage : data-hero-parallax directement sur l'<img>.
+// Options (data-attributes) :
+//   data-hero-parallax-speed="0.15"      amplitude (fraction de la hauteur du conteneur)
+//   data-hero-parallax-smooth="1"        lissage du scrub en secondes
+//   data-hero-parallax-start="top top"   point de départ ScrollTrigger
+//   data-hero-parallax-end="bottom top"  point de fin ScrollTrigger
+//   data-hero-parallax-container=".x"    conteneur (défaut : parent direct)
 
 function initOne(el) {
   const speed = parseFloat(el.dataset.heroParallaxSpeed) || 0.15;
@@ -16,9 +30,12 @@ function initOne(el) {
   }
   container.style.overflow = "hidden";
 
+  // L'image dépasse au-dessus d'une marge = speed × hauteur du conteneur.
+  // Au repos elle est décalée vers le bas de cette marge (cadrage normal),
+  // puis elle descend de la même distance pendant le scroll.
   Object.assign(el.style, {
     position: "absolute",
-    top: "0",
+    top: `${-speed * 100}%`,
     left: "0",
     width: "100%",
     height: `${(1 + speed) * 100}%`,
@@ -26,12 +43,16 @@ function initOne(el) {
     willChange: "transform",
   });
 
+  // yPercent est relatif à la hauteur de l'image : on convertit la marge
+  // (speed × conteneur) en % de l'image = speed / (1 + speed).
+  const shift = (speed / (1 + speed)) * 100;
+
   window.gsap.fromTo(
     el,
-    { y: 0, yPercent: -(speed / (1 + speed)) * 100, force3D: true },
+    { y: 0, yPercent: 0, force3D: true },
     {
       y: 0,
-      yPercent: 0,
+      yPercent: shift,
       ease: "none",
       force3D: true,
       scrollTrigger: {

@@ -300,22 +300,22 @@ $breakpoint-tablet: 991px;
     }
   }
 
-table {
-  width: 100%;
-  min-width: 620px;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-family: $font-sans;
-  font-size: 0.8rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: $color-black-70;
+  table {
+    width: 100%;
+    min-width: 620px;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: $font-sans;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: $color-black-70;
 
-  @media screen and (max-width: $breakpoint-tablet) {
-    min-width: 560px;
+    @media screen and (max-width: $breakpoint-tablet) {
+      min-width: 560px;
+    }
   }
-}
 
   th {
     padding: 12px 14px;
@@ -572,6 +572,11 @@ table {
     --plyr-color-main: #{$color-black};
     --plyr-video-control-color: #{$color-white};
     --plyr-video-control-background-hover: rgba(255, 255, 255, 0.1);
+
+    // Barre de volume uniquement : jaune de la marque
+    .plyr__volume {
+      --plyr-range-fill-background: #f0ff4d;
+    }
 
     &-player {
       &,

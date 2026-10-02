@@ -12,19 +12,59 @@
 // retrouvait insuffisant pour sortir complètement de la fenêtre visible
 // une fois le padding pris en compte, laissant le haut des lettres
 // (accents) visible même à l'état "caché".
+//
+// Les <br> présents dans l'élément source sont conservés : ils servent de
+// séparateurs de ligne ET de mots (« Devenir<br>Partner » -> 2 mots).
 
 const MASK_PADDING = "0.3em"; // marge de respiration sur les 4 côtés
 
+// Parcourt les nœuds enfants et renvoie une liste de jetons :
+//   { type: "word", text }  un mot
+//   { type: "space" }       un espace entre deux mots
+//   { type: "br" }          un retour à la ligne
+function tokenize(el) {
+  const tokens = [];
+
+  const pushText = (text) => {
+    text.split(/(\s+)/).forEach((part) => {
+      if (!part) return;
+      if (!part.trim()) tokens.push({ type: "space" });
+      else tokens.push({ type: "word", text: part });
+    });
+  };
+
+  const walk = (node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        pushText(child.textContent);
+      } else if (child.nodeName === "BR") {
+        tokens.push({ type: "br" });
+      } else {
+        // balise inline (strong, em, a...) : on descend pour garder les <br>
+        // éventuels, le style de la balise est perdu (texte seul conservé)
+        walk(child);
+      }
+    });
+  };
+
+  walk(el);
+  return tokens;
+}
+
 export function splitWordsMasked(el) {
-  const text = el.textContent;
-  const words = text.split(/(\s+)/); // garde les séparateurs dans le tableau
+  const tokens = tokenize(el);
 
   el.innerHTML = "";
   const innerEls = [];
 
-  words.forEach((word) => {
-    if (!word.trim()) {
-      el.appendChild(document.createTextNode(word)); // espace, réinséré tel quel
+  tokens.forEach((token) => {
+    if (token.type === "br") {
+      el.appendChild(document.createElement("br"));
+      return;
+    }
+
+    if (token.type === "space") {
+      el.appendChild(document.createTextNode(" "));
       return;
     }
 
@@ -39,7 +79,7 @@ export function splitWordsMasked(el) {
     const inner = document.createElement("span");
     inner.className = "split-word-inner";
     inner.style.display = "inline-block";
-    inner.textContent = word;
+    inner.textContent = token.text;
 
     mask.appendChild(inner);
     el.appendChild(mask);
@@ -63,12 +103,29 @@ export function getHiddenOffsets(innerEls) {
 // Simple découpe en mots, sans masque (pour le preset "text-words", qui
 // anime en opacity/y plutôt qu'en rideau — pas besoin d'overflow:hidden).
 export function splitWords(el) {
-  const text = el.textContent;
-  const words = text.split(/(\s+)/);
+  const tokens = tokenize(el);
 
-  el.innerHTML = words
-    .map((word) => (word.trim() ? `<span class="split-word" style="display:inline-block">${word}</span>` : word))
-    .join("");
+  el.innerHTML = "";
+  const wordEls = [];
 
-  return Array.from(el.querySelectorAll(".split-word"));
+  tokens.forEach((token) => {
+    if (token.type === "br") {
+      el.appendChild(document.createElement("br"));
+      return;
+    }
+
+    if (token.type === "space") {
+      el.appendChild(document.createTextNode(" "));
+      return;
+    }
+
+    const span = document.createElement("span");
+    span.className = "split-word";
+    span.style.display = "inline-block";
+    span.textContent = token.text;
+    el.appendChild(span);
+    wordEls.push(span);
+  });
+
+  return wordEls;
 }

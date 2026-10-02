@@ -1,0 +1,98 @@
+// src/styles/nav.scss
+// Navigation : état transparent → blanc (après le hero, menu mobile ouvert,
+// dropdown ouvert) + icône burger → croix.
+
+.navbar_component.w-nav::before,
+.navbar_component.w-nav::after {
+  content: none;
+  display: none;
+}
+
+// États qui font passer la nav en "fond blanc, texte noir"
+$nav-solid-states: (
+  ".is-past-hero",
+  ":has(.navbar_menu-button.w--open)",
+  ":has(.dropdown-toggle.w--open)"
+);
+
+@mixin nav-solid {
+  @each $state in $nav-solid-states {
+    .nav_fixed#{$state} {
+      @content;
+    }
+  }
+}
+
+$black: var(--base-color-brand--black-rockfi);
+
+// Transition par défaut (retour au transparent) : douce
+.navbar_component,
+.navbar_component .logo-navbar,
+.navbar_component .navbar_link,
+.navbar_component .dropdown-toggle,
+.navbar_component .menu-icon,
+.navbar_component .button.is-secondary {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+// Ouverture d'un dropdown : bascule rapide pour suivre l'apparition du panneau
+.nav_fixed:has(.dropdown-toggle.w--open) {
+  .navbar_component,
+  .logo-navbar,
+  .navbar_link,
+  .dropdown-toggle,
+  .menu-icon,
+  .button.is-secondary {
+    transition-duration: 0.12s;
+  }
+}
+
+@include nav-solid {
+  .navbar_component {
+    background-color: #fff;
+  }
+
+  .logo-navbar,
+  .navbar_link,
+  .menu-icon,
+  .dropdown-toggle {
+    color: $black;
+  }
+
+  .navbar_component .button.is-secondary {
+    color: $black;
+    border-color: var(--border-color--border-alternate)
+      var(--border-color--border-alternate) #1a1a1a1f;
+
+    &:hover {
+      border-bottom-color: $black;
+    }
+  }
+}
+
+// ---- Icône burger → croix ----
+.burger_bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+
+  // Milieu : se réduit vers la droite
+  &.is-mid {
+    transform-origin: right center;
+  }
+}
+
+.navbar_menu-button.w--open {
+  .burger_bar.is-top {
+    transform: translateY(8px) rotate(-45deg);
+  }
+  .burger_bar.is-bot {
+    transform: translateY(-8px) rotate(45deg);
+  }
+  .burger_bar.is-mid {
+    transform: scaleX(0);
+  }
+}

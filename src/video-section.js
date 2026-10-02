@@ -1,22 +1,30 @@
 // src/video-section.js
-// Rend fonctionnelle la section vidéo (keynote, événement...).
+// Rend fonctionnelle la section vidéo (keynote, événement...) ET les cartes
+// personas (une vidéo par carte).
 //
-// HTML attendu (déjà en place dans Webflow) :
+// 1) SECTION :
 //   .video_media[data-video-player="URL"]   conteneur + URL (mp4, YouTube, Vimeo)
 //     img[data-video-poster]                affiche
-//   .video_controller[data-video-play]      bouton "Voir la vidéo" (icône + texte + durée)
+//   .video_controller[data-video-play]      bouton "Voir la vidéo"
+//     .video_controller-play                icône ronde (ancre du magnétisme)
 //     [data-video-timer]                    durée affichée
 //
-// Seul le bouton (.video_controller) lance la vidéo, pas l'affiche.
+// 2) CARTES PERSONAS :
+//   .personas_card[data-video-card][data-video-player="URL"]
+//     .personas_card-banner[data-video-magnet-zone]   accueille le lecteur + zone magnétique
+//       .video_controller                   bouton
+//         .video_controller-play            icône ronde (ancre du magnétisme)
+//         .video_controller-time            durée affichée
 //
-// Options (data-attributes sur .video_media, facultatives) :
+// Un seul lecteur actif à la fois : en lancer un remet les autres sur leur poster.
+//
+// Options (data-attributes, facultatives) :
 //   data-video-captions="URL.vtt"   sous-titres
 //   data-video-title="Titre"        titre accessible
 //   data-video-duration="2:30"      durée de secours (YouTube surtout)
 //   data-video-magnet="0.35"        force de l'effet magnétique (0 = désactivé)
-//
-// Durée : mp4 via métadonnées, Vimeo via oEmbed, sinon data-video-duration
-// ou lecture Plyr au premier clic.
+//   data-video-magnet-zone          (sur un élément enfant) limite la zone où la
+//                                   souris déclenche le magnétisme ; sinon tout le root
 
 const PLYR_I18N_FR = {
   play: "Lire",
@@ -28,6 +36,8 @@ const PLYR_I18N_FR = {
   enterFullscreen: "Plein écran",
   exitFullscreen: "Quitter le plein écran",
 };
+
+const DEFAULT_MAGNET = 0.35;
 
 function getVideoInfo(src) {
   const yt = src.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
@@ -108,16 +118,23 @@ function loadDuration(src, timerEl, fallback) {
   }
 }
 
-// Effet magnétique : le bouton suit légèrement la souris à l'approche.
-// Utilise la propriété CSS `translate` (variables --mx / --my), indépendante
-// de `transform` utilisé par l'animation d'apparition.
-function initMagnet(layout, button, strength) {
-  if (!button || !strength) return;
-  if (window.matchMedia && (window.matchMedia("(hover: none)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+// Effet magnétique :
+//   scope  : zone où la souris déclenche l'effet
+//   mover  : élément qui se déplace (tout le groupe .video_controller)
+//   anchor : élément de référence pour la distance (.video_controller-play)
+// Utilise la propriété CSS `translate` (variables --mx / --my posées sur mover),
+// indépendante de `transform` utilisé par l'animation d'apparition.
+function initMagnet(scope, mover, anchor, strength) {
+  if (!scope || !mover || !anchor || !strength) return;
+  if (
+    window.matchMedia &&
+    (window.matchMedia("(hover: none)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  ) {
     return;
   }
 
-  const RADIUS = 160; // distance d'influence autour du bouton, en px
+  const RADIUS = 160; // distance d'influence autour de l'icône, en px
   const MAX = 14; // déplacement maximum, en px
   const EASE = 0.14; // lissage (0 = figé, 1 = instantané)
 
@@ -130,8 +147,8 @@ function initMagnet(layout, button, strength) {
   function render() {
     cx += (tx - cx) * EASE;
     cy += (ty - cy) * EASE;
-    button.style.setProperty("--mx", `${cx.toFixed(2)}px`);
-    button.style.setProperty("--my", `${cy.toFixed(2)}px`);
+    mover.style.setProperty("--mx", `${cx.toFixed(2)}px`);
+    mover.style.setProperty("--my", `${cy.toFixed(2)}px`);
 
     const settled = Math.abs(tx - cx) < 0.05 && Math.abs(ty - cy) < 0.05;
     raf = settled ? null : requestAnimationFrame(render);
@@ -142,8 +159,9 @@ function initMagnet(layout, button, strength) {
   }
 
   function onMove(ev) {
-    const rect = button.getBoundingClientRect();
-    // Centre "au repos" : on retire le décalage magnétique en cours
+    // L'icône bouge avec le groupe : on retire le décalage en cours
+    // pour obtenir son centre "au repos"
+    const rect = anchor.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2 - cx;
     const centerY = rect.top + rect.height / 2 - cy;
     const dx = ev.clientX - centerX;
@@ -167,35 +185,66 @@ function initMagnet(layout, button, strength) {
     kick();
   }
 
-  layout.addEventListener("mousemove", onMove);
-  layout.addEventListener("mouseleave", reset);
+  scope.addEventListener("mousemove", onMove);
+  scope.addEventListener("mouseleave", reset);
 }
 
-function initOne(media) {
-  const src = media.dataset.videoPlayer;
-  if (!src) return;
+// ---------------------------------------------------------------------------
+// Lecteur unique : un seul actif à la fois
+// ---------------------------------------------------------------------------
+let activeStop = null;
 
-  const layout = media.closest(".video_layout") || media.parentElement;
-  const trigger = layout.querySelector("[data-video-play]");
-  const timerEl = layout.querySelector("[data-video-timer]");
-  const captions = media.dataset.videoCaptions || "";
-  const title = media.dataset.videoTitle || "";
-  const magnet = media.dataset.videoMagnet !== undefined ? parseFloat(media.dataset.videoMagnet) : 0.35;
+function claimPlayback(stop) {
+  if (activeStop && activeStop !== stop) activeStop();
+  activeStop = stop;
+}
 
-  loadDuration(src, timerEl, media.dataset.videoDuration);
-  initMagnet(layout, trigger, magnet);
+// ---------------------------------------------------------------------------
+// Logique commune section + cartes
+//   root    : élément qui porte la classe is-playing
+//   host    : élément dans lequel le lecteur est inséré (au-dessus du poster)
+//   trigger : bouton (groupe) qui lance la vidéo et qui bouge au magnétisme
+// ---------------------------------------------------------------------------
+function setupPlayback({ root, host, trigger, timerEl, src, captions, title, duration, magnet }) {
+  loadDuration(src, timerEl, duration);
 
-  let started = false;
+  // Tout le groupe bouge, mais la réaction part de l'icône ronde,
+  // et uniquement quand la souris est dans la zone définie
+  const playBtn = trigger && trigger.querySelector(".video_controller-play");
+  const magnetScope = root.querySelector("[data-video-magnet-zone]") || root;
+  initMagnet(magnetScope, trigger, playBtn, magnet);
 
-  function start() {
-    if (started) return;
-    started = true;
-    layout.classList.add("is-playing");
+  let holder = null;
+  let player = null;
 
-    const holder = document.createElement("div");
-    holder.className = "video_player-holder";
+  // Remet le poster : détruit le lecteur, retire le conteneur, réaffiche le bouton
+  function stop() {
+    if (player) {
+      try {
+        player.pause();
+        player.destroy();
+      } catch (e) {}
+      player = null;
+    }
+    if (holder) {
+      holder.remove();
+      holder = null;
+    }
+    root.classList.remove("is-playing");
+    if (activeStop === stop) activeStop = null;
+  }
+
+  function start(e) {
+    if (e) e.stopPropagation();
+    if (holder) return; // déjà en lecture
+
+    claimPlayback(stop);
+    root.classList.add("is-playing");
+
+    holder = document.createElement("div");
+    holder.className = "video_player-holder swiper-no-swiping";
     holder.innerHTML = buildPlayerMarkup(src, captions, title);
-    media.appendChild(holder);
+    host.appendChild(holder);
 
     const target = holder.firstElementChild;
 
@@ -209,37 +258,93 @@ function initOne(media) {
     }
 
     const hasCaptions = Boolean(holder.querySelector("track"));
-    const player = new window.Plyr(target, {
-      controls: ["play", "progress", "current-time", "mute", "volume", ...(hasCaptions ? ["captions"] : []), "fullscreen"],
+    player = new window.Plyr(target, {
+      controls: [
+        "play",
+        "progress",
+        "current-time",
+        "mute",
+        "volume",
+        ...(hasCaptions ? ["captions"] : []),
+        "fullscreen",
+      ],
       i18n: PLYR_I18N_FR,
     });
 
     if (getVideoInfo(src).type === "native") player.play();
     else player.once("ready", () => player.play());
 
-    player.on("loadedmetadata", () => {
-      setTimer(timerEl, formatDuration(player.duration));
-    });
+    player.on("loadedmetadata", () => setTimer(timerEl, formatDuration(player.duration)));
   }
 
-  // Seul le bouton (icône + texte + durée) lance la vidéo, pas l'affiche
   if (trigger) {
-    trigger.addEventListener("click", start);
     trigger.setAttribute("role", "button");
     trigger.setAttribute("tabindex", "0");
     trigger.setAttribute("aria-label", "Voir la vidéo");
+    trigger.addEventListener("click", start);
     trigger.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
-        start();
+        start(ev);
       }
     });
   }
 }
 
+function readMagnet(el) {
+  return el.dataset.videoMagnet !== undefined ? parseFloat(el.dataset.videoMagnet) : DEFAULT_MAGNET;
+}
+
+// Section principale
+function initOne(media) {
+  const src = media.dataset.videoPlayer;
+  if (!src) return;
+
+  const layout = media.closest(".video_layout") || media.parentElement;
+
+  setupPlayback({
+    root: layout,
+    host: media,
+    trigger: layout.querySelector("[data-video-play]"),
+    timerEl: layout.querySelector("[data-video-timer]"),
+    src,
+    captions: media.dataset.videoCaptions || "",
+    title: media.dataset.videoTitle || "",
+    duration: media.dataset.videoDuration,
+    magnet: readMagnet(media),
+  });
+}
+
+// Cartes personas
+function initCard(card) {
+  const src = card.dataset.videoPlayer;
+  if (!src) return;
+
+  setupPlayback({
+    root: card,
+    host: card.querySelector(".personas_card-banner") || card,
+    trigger: card.querySelector(".video_controller"),
+    timerEl: card.querySelector(".video_controller-time"),
+    src,
+    captions: card.dataset.videoCaptions || "",
+    title: card.dataset.videoTitle || "",
+    duration: card.dataset.videoDuration,
+    magnet: readMagnet(card),
+  });
+}
+
 export function initVideoSection(root = document) {
-  root.querySelectorAll("[data-video-player]:not([data-video-ready])").forEach((media) => {
-    media.setAttribute("data-video-ready", "true");
-    initOne(media);
+  // Section principale (les cartes sont exclues)
+  root
+    .querySelectorAll("[data-video-player]:not([data-video-ready]):not([data-video-card])")
+    .forEach((media) => {
+      media.setAttribute("data-video-ready", "true");
+      initOne(media);
+    });
+
+  // Cartes personas
+  root.querySelectorAll("[data-video-card]:not([data-video-ready])").forEach((card) => {
+    card.setAttribute("data-video-ready", "true");
+    initCard(card);
   });
 }

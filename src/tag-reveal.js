@@ -1,51 +1,7 @@
 // src/tag-reveal.js
-// Révèle un segment de trait qui parcourt UNE SEULE FOIS le contour d'un
-// .tag-animated, puis se résorbe sur lui-même (longueur → 0, tête fixe) —
-// le SVG (rect superposé, dimensionné et arrondi pour matcher exactement
-// l'élément) est entièrement construit en JS. Même technique que
-// src/animate/svg-trace.js (gradient recalculé à chaque frame).
-//
-// Séquence complète pour chaque tag : 0) apparition — la longueur grandit
-// de 0 à segmentLength, en douceur (ease "power1.in") — 1) trajet — la tête
-// avance de 0 à totalLength en travelDuration secondes FIXES, peu importe le
-// périmètre du tag — 2) résorption — la tête reste fixe, la longueur
-// décroît à 0 rapidement (pas de fondu d'opacité).
-//
-// Enchaînement entre tags : les tags qui apparaissent ENSEMBLE à l'écran
-// (même lot d'IntersectionObserver) sont triés de haut en bas puis de
-// gauche à droite. Chacun démarre `stagger` secondes après le précédent,
-// SANS attendre sa fin : les animations se chevauchent avec un léger
-// décalage de lancement. Le délai est plafonné à MAX_DELAY.
-//
-// Déclenchée la première fois que le tag devient visible à l'écran
-// (IntersectionObserver, seuil 10%, une seule fois par tag). Les tags
-// ajoutés après coup (Finsweet, "load more", filtres) sont pris en compte
-// via un MutationObserver. Un tag non mesurable (masqué, largeur 0) n'est
-// pas marqué comme traité : il pourra être réessayé au prochain rendu.
-//
-// Le rayon du rect est plafonné à height/2 : un border-radius CSS très
-// supérieur à cette limite (ex: 999px pour un effet "pilule") produit
-// toujours ce plafond visuellement.
-//
-// Le SVG est positionné en absolute avec un inset négatif égal à la
-// largeur du border du tag : inset:0 aligne sur le padding-box (bord
-// intérieur du border) alors que width/height (= offsetWidth/Height,
-// box-sizing: border-box) incluent déjà le border.
-//
-// Usage HTML :
-//   <div class="tag-animated"><div>Paris</div></div>
-//
-// Options via data-attributes sur .tag-animated (toutes optionnelles) :
-//   data-tag-trace-length="30"        longueur du segment, en unités SVG
-//   data-tag-trace-duration="0.5"     durée du trajet principal, en secondes (fixe)
-//   data-tag-trace-end-duration="0.15" durée de la résorption finale, en secondes
-//   data-tag-trace-color="#1A1A1A"    couleur du trait
-//   data-tag-trace-width="1"          épaisseur du trait, en px
-//   data-tag-trace-stagger="0.12"     décalage de lancement entre deux tags, en secondes
-
 const SVG_NS = "http://www.w3.org/2000/svg";
-const DEFAULT_STAGGER = 0.12; // décalage de lancement entre deux tags (s), les animations se chevauchent
-const MAX_DELAY = 3; // garde-fou pour les très longues listes
+const DEFAULT_STAGGER = 0.12;
+const MAX_DELAY = 3;
 
 function createFadeGradient(svg, color) {
   const gradientId = `tag-trace-${Math.random().toString(36).slice(2, 9)}`;
@@ -55,7 +11,8 @@ function createFadeGradient(svg, color) {
 
   [
     { offset: "0", opacity: "0" },
-    { offset: "0.5", opacity: "1" },
+    { offset: "0.55", opacity: "0.5" },
+    { offset: "0.85", opacity: "1" },
     { offset: "1", opacity: "0" },
   ].forEach(({ offset, opacity }) => {
     const stop = document.createElementNS(SVG_NS, "stop");
@@ -76,7 +33,7 @@ function buildTraceSvg(tag) {
   const width = tag.offsetWidth;
   const height = tag.offsetHeight;
 
-  if (!width || !height) return null; // élément pas encore rendu/mesurable
+  if (!width || !height) return null;
 
   const computed = getComputedStyle(tag);
   const radius = Math.min(parseFloat(computed.borderRadius) || 0, height / 2);
@@ -111,7 +68,7 @@ function animateTag(tag, delay = 0) {
   if (tag.dataset.tagTraced) return;
 
   const built = buildTraceSvg(tag);
-  if (!built) return; // pas mesurable : sera réessayé au prochain rendu
+  if (!built) return;
   tag.dataset.tagTraced = "1";
 
   const { svg, rect } = built;
@@ -126,14 +83,23 @@ function animateTag(tag, delay = 0) {
   tag.appendChild(svg);
 
   const totalLength = rect.getTotalLength();
-  const segmentLength = parseFloat(tag.dataset.tagTraceLength) || totalLength * 0.12;
-  const travelDuration = parseFloat(tag.dataset.tagTraceDuration) || 0.5;
+  const segmentLength = parseFloat(tag.dataset.tagTraceLength) || totalLength * 0.22;
+  const travelRatio = Math.min(Math.max(parseFloat(tag.dataset.tagTraceTravel) || 0.5, 0.1), 1);
+  const travelDuration = parseFloat(tag.dataset.tagTraceDuration) || 0.35;
   const endDuration = parseFloat(tag.dataset.tagTraceEndDuration) || 0.15;
   const color = tag.dataset.tagTraceColor || "#1A1A1A";
+  const baseWidth = parseFloat(tag.dataset.tagTraceWidth) || 1;
+
+  const headEnd = Math.max(totalLength * travelRatio, segmentLength + 1);
+  const growDuration = Math.min(travelDuration * 0.25, 0.12);
 
   const { gradient } = createFadeGradient(svg, color);
-
   rect.style.stroke = `url(#${gradient.id})`;
+
+  function setIntensity(i) {
+    rect.style.strokeOpacity = i;
+    rect.setAttribute("stroke-width", baseWidth * (0.7 + 0.8 * i));
+  }
 
   function setSegment(start, length) {
     rect.style.strokeDasharray = `${length} ${totalLength - length}`;
@@ -150,16 +116,16 @@ function animateTag(tag, delay = 0) {
   }
 
   setSegment(0, 0);
+  setIntensity(0);
 
   let currentLength = 0;
 
   const tl = window.gsap.timeline({ delay });
 
-  // Phase 0 — apparition : la longueur grandit de 0 à segmentLength.
   const growProxy = { len: 0 };
   tl.to(growProxy, {
     len: segmentLength,
-    duration: Math.min(travelDuration * 0.2, 0.15),
+    duration: growDuration,
     ease: "power1.in",
     onUpdate: () => {
       currentLength = growProxy.len;
@@ -168,12 +134,11 @@ function animateTag(tag, delay = 0) {
     },
   });
 
-  // Phase 1 — trajet principal : la tête avance de 0 à totalLength.
-  const travelProxy = { pos: 0 };
+  const travelProxy = { pos: segmentLength };
   tl.to(travelProxy, {
-    pos: totalLength,
+    pos: headEnd,
     duration: travelDuration,
-    ease: "none",
+    ease: "power1.inOut",
     onUpdate: () => {
       const start = travelProxy.pos - currentLength;
       setSegment(start, currentLength);
@@ -181,7 +146,6 @@ function animateTag(tag, delay = 0) {
     },
   });
 
-  // Phase 2 — résorption : la tête reste fixe, la longueur décroît à 0.
   const shrinkProxy = { len: segmentLength };
   tl.to(shrinkProxy, {
     len: 0,
@@ -189,11 +153,25 @@ function animateTag(tag, delay = 0) {
     ease: "power2.in",
     onUpdate: () => {
       currentLength = shrinkProxy.len;
-      const start = totalLength - currentLength;
+      const start = headEnd - currentLength;
       setSegment(start, currentLength);
       updateGradient(start, currentLength);
     },
   });
+
+  const peakTime = growDuration + travelDuration * 0.45;
+  const fx = { i: 0 };
+  tl.to(fx, { i: 1, duration: peakTime, ease: "sine.out", onUpdate: () => setIntensity(fx.i) }, 0);
+  tl.to(
+    fx,
+    {
+      i: 0,
+      duration: growDuration + travelDuration + endDuration - peakTime,
+      ease: "sine.in",
+      onUpdate: () => setIntensity(fx.i),
+    },
+    peakTime,
+  );
 
   tl.call(() => svg.remove());
 }
@@ -221,14 +199,11 @@ function initTagReveal(root = document) {
 
         const stagger = parseFloat(tag.dataset.tagTraceStagger) || DEFAULT_STAGGER;
 
-        // Chaque tag démarre `stagger` secondes après le précédent, sans attendre sa fin
         const delay = Math.min(queueIndex * stagger, MAX_DELAY);
         queueIndex += 1;
 
         animateTag(tag, delay);
 
-        // Tag non mesurable (masqué) : on le remet en observation pour un
-        // prochain rendu au lieu de le perdre.
         if (!tag.dataset.tagTraced) observed.delete(tag);
       });
 
@@ -250,7 +225,6 @@ function initTagReveal(root = document) {
 
   observeAll(root);
 
-  // Tags ajoutés après coup (Finsweet, "load more", filtres)
   new MutationObserver(() => observeAll(document)).observe(document.body, {
     childList: true,
     subtree: true,

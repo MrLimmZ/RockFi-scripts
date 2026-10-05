@@ -4,131 +4,21 @@
 @use "animate";
 @use "focus";
 @use "nav";
+@use "video";
+@use "stack";
 
-/* ---- Section vidéo ---- */
-.video_media[data-video-player] {
-  cursor: default;
-}
-
-/* Couleurs Plyr : progression en noir, volume en jaune */
-.video_player-holder .plyr,
-.rt-video .plyr {
-  --plyr-color-main: #1a1a1a;
-}
-.video_player-holder .plyr__volume,
-.rt-video .plyr__volume {
-  --plyr-range-fill-background: #f0ff4d;
-}
-
-.video_player-holder {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: #000;
-}
-.video_player-holder .plyr,
-.video_player-holder .plyr__video-wrapper,
-.video_player-holder video {
-  width: 100%;
-  height: 100%;
-}
-.video_player-holder video {
-  object-fit: contain;
-}
-
-/* Bouton "Voir la vidéo" (groupe icône + texte + durée) :
-   masqué par défaut, visible quand la souris est dans la section */
-.video_controller {
-  cursor: pointer;
-  z-index: 3;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(0.5rem);
-  /* Magnétisme (piloté par le JS) : tout le groupe bouge,
-     indépendant de `transform` */
-  translate: var(--mx, 0px) var(--my, 0px);
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
-}
-
-.video_layout:hover .video_controller,
-.video_layout:focus-within .video_controller {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  pointer-events: auto;
-  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s;
-}
-
-/* Lecture en cours : le bouton reste masqué */
-.video_layout.is-playing .video_controller,
-.video_layout.is-playing:hover .video_controller,
-.video_layout.is-playing:focus-within .video_controller {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-/* Durée : apparaît en fondu une fois connue */
-[data-video-timer],
-.video_controller-time {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-[data-video-timer].is-ready,
-.video_controller-time.is-ready {
-  opacity: 1;
-}
-
-/* Écrans tactiles (pas de survol) : le bouton reste visible */
-@media (hover: none) {
-  .video_layout:not(.is-playing) .video_controller {
-    opacity: 1;
-    visibility: visible;
-    transform: none;
-    pointer-events: auto;
+.model_card {
+  .model_card_img {
+    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .model_card-foot {
+    pointer-events: none;
   }
 }
 
-/* ---- Cartes personas ---- */
-.personas_card-banner {
-  position: relative;
-  overflow: hidden;
-}
-
-/* Contrôleur toujours visible dans les cartes (slider) */
-.video_controller.is-personas {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  pointer-events: auto;
-  cursor: pointer;
-  z-index: 3;
-}
-
-/* Lecture en cours : contrôleur et voile disparaissent */
-.personas_card.is-playing .video_controller.is-personas,
-.personas_card.is-playing .personas_veil {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.section_stack-list {
-  position: relative;
-}
-
-.stack-item {
-  position: sticky;
-  transform-origin: 50% 0;
-}
-
-/* top + margin-bottom = 11.5rem pour toutes */
-.stack-item:nth-child(1) { top: calc(var(--banner-offset, 0rem) + 7rem);    margin-bottom: 4.5rem; z-index: 1; }
-.stack-item:nth-child(2) { top: calc(var(--banner-offset, 0rem) + 8.5rem);  margin-bottom: 3rem;   z-index: 2; }
-.stack-item:nth-child(3) { top: calc(var(--banner-offset, 0rem) + 10rem);   margin-bottom: 1.5rem; z-index: 3; }
-.stack-item:nth-child(4) { top: calc(var(--banner-offset, 0rem) + 11.5rem); margin-bottom: 0;      z-index: 4; }
-
-@media (max-width: 767px) {
-  .stack-item { position: static; margin-bottom: 1.5rem !important; }
+@media (hover: hover) {
+  .model_card:hover .model_card_img {
+    transform: scale(1.025);
+  }
 }

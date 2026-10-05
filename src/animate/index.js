@@ -4,6 +4,7 @@ import { scanAnimations } from "./scan.js";
 import { initParallax } from "./parallax.js";
 import { initHeroParallax } from "./hero-parallax.js";
 import { initBlurPlaceholders } from "./blur-placeholder.js";
+import { initTextProgress } from "./text-progress.js";
 
 export function initAnimations(root = document) {
   initBlurPlaceholders(root);
@@ -14,4 +15,5 @@ export function initAnimations(root = document) {
   scanAnimations(root);
   initParallax(root);
   initHeroParallax(root);
+  initTextProgress(root);
 }

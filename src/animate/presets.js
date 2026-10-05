@@ -51,57 +51,70 @@ export const PRESETS = {
     });
   },
 
-// Anime un nombre de 0 jusqu'à sa valeur finale, avec un pas d'incrément qui
-// s'adapte à la magnitude du nombre — un grand nombre (ex: 1500) compte par
-// paliers ronds (dizaines/centaines) plutôt que défiler chiffre par chiffre,
-// pour rester lisible et avoir un effet de comptage cohérent visuellement,
-// peu importe la taille du nombre.
-//
-// On extrait la partie numérique pure via regex, on anime UN OBJET
-// intermédiaire { value: 0 } avec GSAP (pas directement le texte), et à
-// chaque frame on arrondit au multiple du pas le plus proche avant
-// d'afficher — le pas est choisi parmi une liste de valeurs "rondes"
-// (1, 2, 5, 10, 25, 50, 100, 250, 500, 1000...) proche de target/40, pour
-// obtenir environ 40 paliers visibles du début à la fin quelle que soit
-// l'ampleur du nombre.
-"count-up": (el, opts) => {
-  const rawText = el.textContent.trim();
-  // Groupe 1 = préfixe éventuel, Groupe 2 = chiffres/espaces, Groupe 3 = suffixe éventuel
-  const match = rawText.match(/^(.*?)(\d[\d\s]*)(.*)$/);
-  if (!match) return window.gsap.timeline();
+  // Anime un nombre de 0 jusqu'à sa valeur finale, avec un pas d'incrément qui
+  // s'adapte à la magnitude du nombre — un grand nombre (ex: 1500) compte par
+  // paliers ronds (dizaines/centaines) plutôt que défiler chiffre par chiffre.
+  //
+  // Gère aussi les décimales (virgule ou point) : "1,3 Md€" défile par pas de
+  // 0,1 (0,0 → 0,1 → … → 1,3), la virgule et le suffixe sont conservés.
+  //
+  // On extrait la partie numérique via regex, on anime UN OBJET intermédiaire
+  // { value: 0 } avec GSAP, et à chaque frame on arrondit au multiple du pas
+  // avant d'afficher. Le pas est choisi dans une liste de valeurs "rondes"
+  // proche de target/40.
+  "count-up": (el, opts) => {
+    const rawText = el.textContent.trim();
+    // Groupe 1 = préfixe, 2 = nombre (chiffres, espaces, décimales avec , ou .), 3 = suffixe
+    const match = rawText.match(/^(.*?)(\d[\d\s]*(?:[.,]\d+)?)(.*)$/);
+    if (!match) return window.gsap.timeline();
 
-  const prefix = match[1];
-  const digitsGroup = match[2];
-  const suffix = match[3];
+    const prefix = match[1];
+    const numberGroup = match[2];
+    const suffix = match[3];
 
-  const targetNumber = parseInt(digitsGroup.replace(/\s/g, ""), 10);
-  if (isNaN(targetNumber)) return window.gsap.timeline();
+    const decSep = numberGroup.includes(",") ? "," : ".";
+    const hasDecimals = /[.,]\d+$/.test(numberGroup);
+    const decimals = hasDecimals ? numberGroup.split(/[.,]/).pop().length : 0;
 
-  const NICE_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-  const idealStep = targetNumber / 40;
-  const step = NICE_STEPS.find((s) => s >= idealStep) || NICE_STEPS[NICE_STEPS.length - 1];
+    const targetNumber = parseFloat(numberGroup.replace(/\s/g, "").replace(",", "."));
+    if (isNaN(targetNumber)) return window.gsap.timeline();
 
-  const counter = { value: 0 };
-  el.textContent = `${prefix}0${suffix}`;
+    const NICE_STEPS = decimals
+      ? [0.1, 0.2, 0.5, 1, 2, 5, 10]
+      : [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+    const idealStep = targetNumber / 40;
+    // Avec décimales : pas minimal = 10^-decimals (0,1 pour une décimale)
+    const minStep = decimals ? Math.pow(10, -decimals) : 1;
+    const step =
+      NICE_STEPS.find((s) => s >= Math.max(idealStep, minStep)) ||
+      NICE_STEPS[NICE_STEPS.length - 1];
 
-  return window.gsap.to(counter, {
-    value: targetNumber,
-    duration: opts?.duration ?? 1.5,
-    delay: opts?.delay ?? 0,
-    ease: opts?.ease ?? "power1.out",
-    onUpdate: () => {
-      const stepped = Math.min(Math.round(counter.value / step) * step, targetNumber);
-      const formatted = digitsGroup.includes(" ")
-        ? stepped.toLocaleString("fr-FR").replace(/,/g, " ").replace(/\u202f/g, " ")
-        : String(stepped);
+    const format = (n) => {
+      if (decimals) {
+        return n.toFixed(decimals).replace(".", decSep);
+      }
+      return numberGroup.includes(" ")
+        ? n.toLocaleString("fr-FR").replace(/,/g, " ").replace(/\u202f/g, " ")
+        : String(n);
+    };
 
-      el.textContent = `${prefix}${formatted}${suffix}`;
-    },
-    onComplete: () => {
-      el.textContent = rawText;
-    },
-  });
-},
+    const counter = { value: 0 };
+    el.textContent = `${prefix}${format(0)}${suffix}`;
+
+    return window.gsap.to(counter, {
+      value: targetNumber,
+      duration: opts?.duration ?? 1.5,
+      delay: opts?.delay ?? 0,
+      ease: opts?.ease ?? "power1.out",
+      onUpdate: () => {
+        const stepped = Math.min(Math.round(counter.value / step) * step, targetNumber);
+        el.textContent = `${prefix}${format(stepped)}${suffix}`;
+      },
+      onComplete: () => {
+        el.textContent = rawText;
+      },
+    });
+  },
 
   // Reveal "rideau" sur une image : une boîte (overflow:hidden) grandit en
   // hauteur de 0 à 100%, révélant l'image du haut vers le bas. L'image

@@ -8,6 +8,10 @@
 //       .hero-bg_frame      déplacement scroll + souris, et cadre qui rogne
 //         img               parallax interne léger (agrandi, glisse dans le cadre)
 //
+// Anti-flash : le CSS du <head> cache .hero-bg_image (opacity: 0).
+// Le script pose la classe .is-ready une fois l'état de départ appliqué
+// sur .hero-bg_intro (ou immédiatement si l'animation ne peut pas tourner).
+//
 // Attributs d'apparition (facultatifs) :
 //   data-hero-bg-intro-start="0.5"      délai global avant le lancement de la séquence (s)
 //                                       (sur .section_main_hero, sinon sur la première image)
@@ -82,14 +86,18 @@ function getOrder(el, index) {
 }
 
 export function initHeroBgParallax(root = document) {
-  if (typeof window.gsap === "undefined" || typeof window.ScrollTrigger === "undefined") return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Révèle toutes les images (cas où l'animation ne peut pas tourner)
+  const showAll = () =>
+    root.querySelectorAll(".hero-bg_image").forEach((el) => el.classList.add("is-ready"));
+
+  if (typeof window.gsap === "undefined" || typeof window.ScrollTrigger === "undefined") return showAll();
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return showAll();
 
   const hero = root.querySelector(".section_main_hero");
-  if (!hero) return;
+  if (!hero) return showAll();
 
   const all = Array.from(hero.querySelectorAll(".hero-bg_image")).filter((el) => el.querySelector("img"));
-  if (!all.length) return;
+  if (!all.length) return showAll();
 
   // Construit les couches et mémorise les éléments de chaque image
   const layers = new Map();
@@ -132,6 +140,10 @@ export function initHeroBgParallax(root = document) {
         clearProps: "transform,opacity",
       }
     );
+
+    // L'état de départ (opacité 0) est appliqué sur .hero-bg_intro : on peut
+    // lever le masque CSS posé sur .hero-bg_image sans flash.
+    el.classList.add("is-ready");
   });
 
   // ---------------------------------------------------------- scroll + souris + interne

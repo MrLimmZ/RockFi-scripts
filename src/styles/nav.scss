@@ -9,17 +9,32 @@
   display: none;
 }
 
-// États qui font passer la nav en "fond plein"
+// États qui font passer la nav en "fond plein" (toutes largeurs)
 $nav-solid-states: (
   ".is-past-hero",
-  ":has(.navbar_menu-button.w--open)",
   ":has(.dropdown-toggle.w--open)"
 );
+
+// États propres au menu mobile : le bouton burger est masqué au-dessus de 991px
+// mais peut garder .w--open après un resize, donc on les limite au mobile.
+$nav-solid-states-mobile: (
+  ":has(.navbar_menu-button.w--open)"
+);
+
+$nav-mobile-query: "(max-width: 991px)";
 
 @mixin nav-solid {
   @each $state in $nav-solid-states {
     .nav_fixed#{$state} {
       @content;
+    }
+  }
+
+  @media #{$nav-mobile-query} {
+    @each $state in $nav-solid-states-mobile {
+      .nav_fixed#{$state} {
+        @content;
+      }
     }
   }
 }
@@ -30,6 +45,22 @@ $black: var(--base-color-brand--black-rockfi);
 // (plus fiable que la classe w-variant-<hash>). Le "$=" tolère la faute
 // de frappe actuelle ("tansparent-dark").
 $nav-dark: '[data-wf--navbar--variant$="-dark"]';
+
+@mixin nav-dark-solid {
+  @each $state in $nav-solid-states {
+    .nav_fixed#{$nav-dark}#{$state} {
+      @content;
+    }
+  }
+
+  @media #{$nav-mobile-query} {
+    @each $state in $nav-solid-states-mobile {
+      .nav_fixed#{$nav-dark}#{$state} {
+        @content;
+      }
+    }
+  }
+}
 
 // Transition par défaut (retour au transparent) : douce
 .navbar_component,
@@ -84,26 +115,24 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
 // Mêmes états que la nav pleine, spécificité supérieure : écrase le blanc sans !important.
 // (.navbar_menu volontairement retiré : le fond noir vient de .navbar_component
 // sur desktop, et du bloc @media ci-dessous sur mobile.)
-@each $state in $nav-solid-states {
-  .nav_fixed#{$nav-dark}#{$state} {
-    .navbar_component {
-      background-color: #000000;
-    }
+@include nav-dark-solid {
+  .navbar_component {
+    background-color: #000000;
+  }
 
-    .logo-navbar,
-    .navbar_link,
-    .menu-icon,
-    .dropdown-toggle {
-      color: #fff;
-    }
+  .logo-navbar,
+  .navbar_link,
+  .menu-icon,
+  .dropdown-toggle {
+    color: #fff;
+  }
 
-    .navbar_component .button.is-secondary {
-      color: #fff;
-      border-color: rgba(255, 255, 255, 0.2);
+  .navbar_component .button.is-secondary {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
 
-      &:hover {
-        border-bottom-color: #fff;
-      }
+    &:hover {
+      border-bottom-color: #fff;
     }
   }
 }
@@ -112,7 +141,7 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
 // Fond noir statique (indépendant de l'état du burger) : pendant le repli,
 // .w--open est déjà retiré mais le menu est encore visible. Aucune
 // transition forcée : l'animation de Webflow reste intacte.
-@media (max-width: 991px) {
+@media #{$nav-mobile-query} {
   .nav_fixed#{$nav-dark} .navbar_menu {
     background-color: #000000;
   }
@@ -126,6 +155,16 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
   .nav_fixed#{$nav-dark} .w-dropdown.w--nav-dropdown-open,
   .nav_fixed#{$nav-dark} .navbar_link.w--nav-link-open {
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
+
+// ---- Overlay derrière la nav quand le menu mobile (burger) est ouvert ----
+// Le CSS global n'affiche .nav-overlay que si un .w-dropdown-toggle est ouvert.
+// Même rendu (opacité, transition) pour le bouton burger, sous 992px seulement.
+@media #{$nav-mobile-query} {
+  .nav_fixed:has(.navbar_menu-button.w--open) .nav-overlay {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 

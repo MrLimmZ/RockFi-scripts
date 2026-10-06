@@ -1,6 +1,6 @@
 // src/video-section.js
 // Rend fonctionnelle la section vidéo (keynote, événement...) ET les cartes
-// personas (une vidéo par carte).
+// (personas, presse...) : une vidéo par carte.
 //
 // 1) SECTION :
 //   .video_media[data-video-player="URL"]   conteneur + URL (mp4, YouTube, Vimeo)
@@ -9,19 +9,34 @@
 //     .video_controller-play                icône ronde (ancre du magnétisme)
 //     [data-video-timer]                    durée affichée
 //
-// 2) CARTES PERSONAS :
+// 2) CARTES (personas, presse...) :
 //   .personas_card[data-video-card][data-video-player="URL"]
 //     .personas_card-banner[data-video-magnet-zone]   accueille le lecteur + zone magnétique
 //       .video_controller                   bouton
 //         .video_controller-play            icône ronde (ancre du magnétisme)
 //         .video_controller-time            durée affichée
 //
-// Un seul lecteur actif à la fois : en lancer un remet les autres sur leur poster.
+// Formats acceptés dans data-video-player :
+//   https://.../video.mp4                 fichier natif
+//   youtube:ID  ou URL YouTube
+//   vimeo:ID    vimeo:ID/HASH (non répertoriée)  ou URL Vimeo
+//
+// Un seul lecteur (avec son) actif à la fois : en lancer un remet les autres
+// sur leur aperçu / poster. À la fin d'une vidéo, on revient à l'aperçu ou au
+// poster (évite l'écran de fin "autres vidéos" de Vimeo).
 //
 // Options (data-attributes, facultatives) :
+//   data-video-autoplay             aperçu muet en boucle, visible à l'écran ;
+//                                   un clic relance la vidéo depuis le début avec
+//                                   le lecteur complet. Absent ou "false" = désactivé.
+//   data-video-autoplay-start="12"  l'aperçu commence (et reboucle) à 12 s. Défaut : 0.
+//   data-video-autoplay-delay="0"   délai (secondes) entre l'arrivée à l'écran et le
+//                                   début de l'aperçu. Défaut : 0 (immédiat).
+//   data-video-host                 (sur un élément enfant) accueille le lecteur à la
+//                                   place de la carte entière ; prioritaire sur le reste
 //   data-video-captions="URL.vtt"   sous-titres
 //   data-video-title="Titre"        titre accessible
-//   data-video-duration="2:30"      durée de secours (YouTube surtout)
+//   data-video-duration="2:30"      durée de secours (YouTube / Vimeo privé)
 //   data-video-magnet="0.35"        force de l'effet magnétique (0 = désactivé)
 //   data-video-magnet-zone          (sur un élément enfant) limite la zone où la
 //                                   souris déclenche le magnétisme ; sinon tout le root
@@ -38,30 +53,65 @@ const PLYR_I18N_FR = {
 };
 
 const DEFAULT_MAGNET = 0.35;
+const DEFAULT_AUTOPLAY_DELAY = 0; // secondes (0 = dès que la carte est visible)
+const FADE_MS = 350; // doit correspondre à la transition CSS des holders
+const REVEAL_TIMEOUT_MS = 4000; // sécurité lecteur classique
+const PREVIEW_REVEAL_TIMEOUT_MS = 2500; // sécurité aperçu
 
 function getVideoInfo(src) {
-  const yt = src.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
-  if (yt) return { type: "youtube", id: yt[1] };
+  const s = (src || "").trim();
 
-  const vimeo = src.match(/vimeo\.com\/(\d+)/);
-  if (vimeo) return { type: "vimeo", id: vimeo[1] };
+  // Raccourcis : "youtube:ID" / "vimeo:ID" / "vimeo:ID/HASH" (ou "vimeo:ID:HASH")
+  const short = s.match(/^(youtube|vimeo):([\w-]+)(?:[/:]([\w]+))?$/i);
+  if (short) {
+    const type = short[1].toLowerCase();
+    const id = short[2];
+    const hash = short[3] || "";
+    if (type === "vimeo") {
+      return {
+        type,
+        id,
+        hash,
+        url: `https://vimeo.com/${id}${hash ? `/${hash}` : ""}`,
+      };
+    }
+    return { type, id, hash: "", url: `https://www.youtube.com/watch?v=${id}` };
+  }
 
-  return { type: "native", id: null };
+  const yt = s.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
+  if (yt) return { type: "youtube", id: yt[1], hash: "", url: s };
+
+  // URL Vimeo, avec hash optionnel pour les vidéos non répertoriées
+  const vimeo = s.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([\w]+))?/);
+  if (vimeo) {
+    return { type: "vimeo", id: vimeo[1], hash: vimeo[2] || "", url: s };
+  }
+
+  return { type: "native", id: null, hash: "", url: s };
 }
 
-function buildPlayerMarkup(src, captions, title) {
+// preview = true : version muette sans sous-titres (aperçu autoplay)
+// startAt        : seconde de départ de l'aperçu (fichier natif, via #t=)
+function buildPlayerMarkup(src, captions, title, preview = false, startAt = 0) {
   const info = getVideoInfo(src);
   const frameTitle = title || "Lecteur vidéo";
 
   if (info.type === "youtube" || info.type === "vimeo") {
-    return `<div class="plyr__video-embed" data-plyr-provider="${info.type}" data-plyr-embed-id="${info.id}" title="${frameTitle}"></div>`;
+    // Vimeo avec hash : on passe l'URL complète, Plyr en extrait l'ID et le hash
+    const embedId = info.type === "vimeo" && info.hash ? info.url : info.id;
+    return `<div class="plyr__video-embed" data-plyr-provider="${info.type}" data-plyr-embed-id="${embedId}" title="${frameTitle}"></div>`;
+  }
+
+  if (preview) {
+    const frag = startAt > 0 ? `#t=${startAt}` : "";
+    return `<video playsinline muted preload="auto"><source src="${info.url}${frag}" type="video/mp4"></video>`;
   }
 
   const track = captions
     ? `<track kind="captions" label="Français" srclang="fr" src="${captions}" default>`
     : "";
 
-  return `<video playsinline preload="metadata"><source src="${src}" type="video/mp4">${track}</video>`;
+  return `<video playsinline preload="metadata"><source src="${info.url}" type="video/mp4">${track}</video>`;
 }
 
 function formatDuration(seconds) {
@@ -103,13 +153,13 @@ function loadDuration(src, timerEl, fallback) {
     probe.addEventListener("loadedmetadata", done, { once: true });
     probe.addEventListener("error", () => {}, { once: true });
 
-    probe.src = src;
+    probe.src = info.url;
     probe.load();
     return;
   }
 
   if (info.type === "vimeo" && typeof fetch === "function") {
-    fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(src)}`)
+    fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(info.url)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d && d.duration) setTimer(timerEl, formatDuration(d.duration));
@@ -190,7 +240,7 @@ function initMagnet(scope, mover, anchor, strength) {
 }
 
 // ---------------------------------------------------------------------------
-// Lecteur unique : un seul actif à la fois
+// Lecteur unique : un seul actif à la fois (les aperçus muets ne comptent pas)
 // ---------------------------------------------------------------------------
 let activeStop = null;
 
@@ -201,11 +251,24 @@ function claimPlayback(stop) {
 
 // ---------------------------------------------------------------------------
 // Logique commune section + cartes
-//   root    : élément qui porte la classe is-playing
+//   root    : élément qui porte les classes is-playing / is-previewing
 //   host    : élément dans lequel le lecteur est inséré (au-dessus du poster)
 //   trigger : bouton (groupe) qui lance la vidéo et qui bouge au magnétisme
 // ---------------------------------------------------------------------------
-function setupPlayback({ root, host, trigger, timerEl, src, captions, title, duration, magnet }) {
+function setupPlayback({
+  root,
+  host,
+  trigger,
+  timerEl,
+  src,
+  captions,
+  title,
+  duration,
+  magnet,
+  autoplay,
+  autoplayDelay,
+  autoplayStart,
+}) {
   loadDuration(src, timerEl, duration);
 
   // Tout le groupe bouge, mais la réaction part de l'icône ronde,
@@ -216,9 +279,189 @@ function setupPlayback({ root, host, trigger, timerEl, src, captions, title, dur
 
   let holder = null;
   let player = null;
+  let revealTimer = null;
+  let cleanupTimer = null;
 
-  // Remet le poster : détruit le lecteur, retire le conteneur, réaffiche le bouton
+  // Aperçu muet (autoplay)
+  let previewHolder = null;
+  let previewPlayer = null;
+  let previewTimer = null;
+  let previewRevealTimer = null;
+  let previewPaused = false;
+  let inView = true;
+
+  const isNative = getVideoInfo(src).type === "native";
+
+  // Un clic dans le lecteur ne doit jamais suivre le lien parent.
+  // preventDefault seulement : Plyr doit continuer à recevoir ses clics.
+  function blockLink(ev) {
+    if (holder && holder.contains(ev.target)) ev.preventDefault();
+  }
+
+  // ---- Aperçu muet ----
+  function clearPreviewTimer() {
+    if (previewTimer) {
+      clearTimeout(previewTimer);
+      previewTimer = null;
+    }
+  }
+
+  // Détruit vraiment l'aperçu (lecteur classique prêt, ou fin de vie)
+  function stopPreview() {
+    clearPreviewTimer();
+    clearTimeout(previewRevealTimer);
+    previewRevealTimer = null;
+    if (previewPlayer) {
+      try {
+        previewPlayer.destroy();
+      } catch (e) {}
+      previewPlayer = null;
+    }
+    if (previewHolder) {
+      previewHolder.remove();
+      previewHolder = null;
+    }
+    previewPaused = false;
+    root.classList.remove("is-previewing");
+  }
+
+  // Met l'aperçu en pause (hors écran) sans le détruire : pas de rechargement
+  function pausePreview() {
+    clearPreviewTimer();
+    if (!previewHolder || previewPaused) return;
+    previewPaused = true;
+    try {
+      if (previewPlayer) previewPlayer.pause();
+      else {
+        const v = previewHolder.querySelector("video");
+        if (v) v.pause();
+      }
+    } catch (e) {}
+  }
+
+  function resumePreview() {
+    if (!previewHolder || !previewPaused) return;
+    previewPaused = false;
+    try {
+      const p = previewPlayer
+        ? previewPlayer.play()
+        : previewHolder.querySelector("video")?.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (e) {}
+  }
+
+  function startPreview() {
+    if (previewHolder || holder) return;
+
+    previewHolder = document.createElement("div");
+    // Invisible (opacity 0 en CSS) jusqu'à ce que la lecture démarre vraiment
+    previewHolder.className = "video_preview-holder swiper-no-swiping";
+    previewHolder.setAttribute("aria-hidden", "true");
+    previewHolder.innerHTML = buildPlayerMarkup(src, "", title, true, autoplayStart);
+    host.appendChild(previewHolder);
+
+    const ph = previewHolder;
+    let revealed = false;
+    const reveal = () => {
+      if (revealed || previewHolder !== ph) return;
+      revealed = true;
+      clearTimeout(previewRevealTimer);
+      ph.classList.add("is-ready");
+      root.classList.add("is-previewing");
+    };
+
+    // Sécurité : si "playing" n'arrive jamais, on affiche quand même l'aperçu
+    previewRevealTimer = setTimeout(reveal, PREVIEW_REVEAL_TIMEOUT_MS);
+
+    const target = previewHolder.firstElementChild;
+
+    // Plyr indisponible : vidéo native brute
+    if (typeof window.Plyr === "undefined") {
+      if (target.tagName === "VIDEO") {
+        target.muted = true;
+        target.addEventListener("playing", reveal, { once: true });
+        // Reboucle à autoplayStart (ou au début si 0)
+        target.addEventListener("ended", () => {
+          target.currentTime = autoplayStart;
+          target.play().catch(() => {});
+        });
+        target.play().catch(() => {});
+      }
+      return;
+    }
+
+    const pl = new window.Plyr(target, {
+      controls: [],
+      clickToPlay: false,
+      keyboard: { focused: false, global: false },
+      fullscreen: { enabled: false },
+      // Boucle gérée à la main (voir "ended") pour pouvoir reboucler à autoplayStart
+      loop: { active: false },
+      tooltips: { controls: false, seek: false },
+    });
+    previewPlayer = pl;
+
+    pl.once("playing", reveal);
+    pl.once("timeupdate", reveal);
+
+    // Reboucle à autoplayStart (ou au début si 0)
+    pl.on("ended", () => {
+      if (previewPlayer !== pl) return;
+      pl.currentTime = autoplayStart;
+      const p = pl.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    });
+
+    const run = () => {
+      if (previewPlayer !== pl) return; // détruit entre-temps
+      pl.muted = true;
+      // Fichier natif : le départ est déjà géré par #t= ; embed : on se positionne ici
+      if (autoplayStart > 0 && !isNative) pl.currentTime = autoplayStart;
+      // Sorti de l'écran pendant le chargement : on reste en pause
+      if (!inView) {
+        previewPaused = true;
+        return;
+      }
+      const p = pl.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+
+    if (isNative) run();
+    else pl.once("ready", run);
+  }
+
+  // Visible : crée l'aperçu une seule fois, puis le reprend. Hors écran : pause
+  // (jamais détruit, donc pas de rechargement ni de frame noire à chaque entrée).
+  function syncPreview() {
+    if (!autoplay) return;
+
+    if (inView && !holder) {
+      if (previewHolder) {
+        resumePreview();
+        return;
+      }
+      if (previewTimer) return; // déjà programmé
+      if (autoplayDelay <= 0) {
+        startPreview();
+        return;
+      }
+      previewTimer = setTimeout(() => {
+        previewTimer = null;
+        if (inView && !holder) startPreview();
+      }, autoplayDelay * 1000);
+    } else {
+      pausePreview();
+    }
+  }
+
+  // ---- Lecteur classique ----
+  // Remet l'aperçu (ou le poster) : détruit le lecteur, retire le conteneur
   function stop() {
+    clearTimeout(revealTimer);
+    clearTimeout(cleanupTimer);
+    revealTimer = null;
+    cleanupTimer = null;
+
     if (player) {
       try {
         player.pause();
@@ -230,21 +473,52 @@ function setupPlayback({ root, host, trigger, timerEl, src, captions, title, dur
       holder.remove();
       holder = null;
     }
+    root.removeEventListener("click", blockLink, true);
     root.classList.remove("is-playing");
     if (activeStop === stop) activeStop = null;
+
+    syncPreview();
   }
 
   function start(e) {
-    if (e) e.stopPropagation();
+    if (e) {
+      // Si la carte est un lien <a>, on empêche la navigation
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (holder) return; // déjà en lecture
 
     claimPlayback(stop);
+
+    // Plus de nouvel aperçu pendant la lecture ; l'aperçu en cours reste affiché
+    // sous le lecteur jusqu'à ce que celui-ci soit prêt (évite le clignotement)
+    clearPreviewTimer();
     root.classList.add("is-playing");
 
     holder = document.createElement("div");
+    // Invisible (opacity 0 en CSS) jusqu'à ce que la lecture démarre vraiment
     holder.className = "video_player-holder swiper-no-swiping";
     holder.innerHTML = buildPlayerMarkup(src, captions, title);
     host.appendChild(holder);
+
+    // Le lecteur peut se trouver dans un <a> : aucun clic dedans ne doit ouvrir le lien
+    root.addEventListener("click", blockLink, true);
+
+    const h = holder;
+    let revealed = false;
+
+    // Le lecteur apparaît en fondu, puis l'aperçu en dessous est retiré
+    const reveal = () => {
+      if (revealed || holder !== h) return;
+      revealed = true;
+      clearTimeout(revealTimer);
+      h.classList.add("is-ready");
+      cleanupTimer = setTimeout(() => {
+        cleanupTimer = null;
+        if (holder === h) stopPreview();
+      }, FADE_MS + 50);
+    };
+    revealTimer = setTimeout(reveal, REVEAL_TIMEOUT_MS);
 
     const target = holder.firstElementChild;
 
@@ -252,6 +526,8 @@ function setupPlayback({ root, host, trigger, timerEl, src, captions, title, dur
     if (typeof window.Plyr === "undefined") {
       if (target.tagName === "VIDEO") {
         target.controls = true;
+        target.addEventListener("playing", reveal, { once: true });
+        target.addEventListener("ended", () => stop(), { once: true });
         target.play().catch(() => {});
       }
       return;
@@ -271,10 +547,15 @@ function setupPlayback({ root, host, trigger, timerEl, src, captions, title, dur
       i18n: PLYR_I18N_FR,
     });
 
-    if (getVideoInfo(src).type === "native") player.play();
+    player.once("playing", reveal);
+
+    if (isNative) player.play();
     else player.once("ready", () => player.play());
 
     player.on("loadedmetadata", () => setTimer(timerEl, formatDuration(player.duration)));
+
+    // Fin de lecture : retour à l'aperçu / au poster (évite l'écran "autres vidéos" de Vimeo)
+    player.on("ended", () => stop());
   }
 
   if (trigger) {
@@ -284,15 +565,53 @@ function setupPlayback({ root, host, trigger, timerEl, src, captions, title, dur
     trigger.addEventListener("click", start);
     trigger.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
-        ev.preventDefault();
         start(ev);
       }
     });
+  }
+
+  // Aperçu : lancé/mis en pause selon la visibilité à l'écran
+  if (autoplay) {
+    if (typeof IntersectionObserver === "undefined") {
+      syncPreview();
+    } else {
+      inView = false;
+      new IntersectionObserver(
+        ([entry]) => {
+          inView = entry.isIntersecting;
+          syncPreview();
+        },
+        { threshold: 0.25 },
+      ).observe(root);
+    }
   }
 }
 
 function readMagnet(el) {
   return el.dataset.videoMagnet !== undefined ? parseFloat(el.dataset.videoMagnet) : DEFAULT_MAGNET;
+}
+
+// Autoplay actif si l'attribut est présent (et différent de "false"),
+// sauf si l'utilisateur préfère moins d'animations
+function readAutoplay(el) {
+  const v = el.dataset.videoAutoplay;
+  if (v === undefined || v === "false") return false;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return false;
+  }
+  return true;
+}
+
+// Délai avant le début de l'aperçu (secondes)
+function readAutoplayDelay(el) {
+  const v = parseFloat(el.dataset.videoAutoplayDelay);
+  return isFinite(v) && v >= 0 ? v : DEFAULT_AUTOPLAY_DELAY;
+}
+
+// Seconde de départ de l'aperçu
+function readAutoplayStart(el) {
+  const v = parseFloat(el.dataset.videoAutoplayStart);
+  return isFinite(v) && v > 0 ? v : 0;
 }
 
 // Section principale
@@ -304,7 +623,7 @@ function initOne(media) {
 
   setupPlayback({
     root: layout,
-    host: media,
+    host: media.querySelector("[data-video-host]") || media,
     trigger: layout.querySelector("[data-video-play]"),
     timerEl: layout.querySelector("[data-video-timer]"),
     src,
@@ -312,17 +631,23 @@ function initOne(media) {
     title: media.dataset.videoTitle || "",
     duration: media.dataset.videoDuration,
     magnet: readMagnet(media),
+    autoplay: readAutoplay(media),
+    autoplayDelay: readAutoplayDelay(media),
+    autoplayStart: readAutoplayStart(media),
   });
 }
 
-// Cartes personas
+// Cartes (personas, presse...)
 function initCard(card) {
   const src = card.dataset.videoPlayer;
   if (!src) return;
 
   setupPlayback({
     root: card,
-    host: card.querySelector(".personas_card-banner") || card,
+    host:
+      card.querySelector("[data-video-host]") ||
+      card.querySelector(".personas_card-banner") ||
+      card,
     trigger: card.querySelector(".video_controller"),
     timerEl: card.querySelector(".video_controller-time"),
     src,
@@ -330,6 +655,9 @@ function initCard(card) {
     title: card.dataset.videoTitle || "",
     duration: card.dataset.videoDuration,
     magnet: readMagnet(card),
+    autoplay: readAutoplay(card),
+    autoplayDelay: readAutoplayDelay(card),
+    autoplayStart: readAutoplayStart(card),
   });
 }
 
@@ -342,7 +670,7 @@ export function initVideoSection(root = document) {
       initOne(media);
     });
 
-  // Cartes personas
+  // Cartes
   root.querySelectorAll("[data-video-card]:not([data-video-ready])").forEach((card) => {
     card.setAttribute("data-video-ready", "true");
     initCard(card);

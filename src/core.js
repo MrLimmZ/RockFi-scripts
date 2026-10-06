@@ -36,6 +36,9 @@ function scrollToHash(hash, { instant = false } = {}) {
       duration: instant ? 0 : ANCHOR_DURATION,
       easing: easeInOutCubic,
       immediate: instant,
+      // Lenis ignore scrollTo() quand il est arrêté (scroll bloqué par un menu
+      // ou un dropdown ouvert) : force permet quand même de suivre l'ancre.
+      force: true,
     });
   } else {
     const top = target.getBoundingClientRect().top + window.scrollY + offset;

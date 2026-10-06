@@ -21,12 +21,15 @@ import { initNameTokens } from "./name-tokens.js";
 import { initNavHero } from "./nav-hero.js";
 import { initHeroBgParallax } from "./animate/hero-bg-parallax.js";
 import { initStackCards } from "./animate/stack-cards.js";
+import { initSpeakersSlot } from "./speakers-slot.js";
+import { initNavDropdownHover } from "./nav-dropdown-hover";
 
 const BUILD_VERSION = new Date().toISOString().slice(0, 10);
 console.log(`%c[RockFi] main.js — build v1.0.2 ${BUILD_VERSION}`, "color:#7dd3fc");
 
 onReady(() => {
   initCore();
+  initSpeakersSlot();
   initCollapses();
   initBlogAccordion();
   initBlogFaq();
@@ -47,4 +50,5 @@ onReady(() => {
   initNavHero();
   initHeroBgParallax();
   initStackCards();
+  initNavDropdownHover();
 });

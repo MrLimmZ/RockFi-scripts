@@ -7,18 +7,78 @@
 @use "video";
 @use "stack";
 
-.model_card {
-  .model_card_img {
-    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
-  }
-  .model_card-foot {
-    pointer-events: none;
+// ---- Zoom au survol des images ----
+// data-hover-zoom       → sur la carte/le lien qui reçoit le survol
+// data-hover-zoom-img   → sur l'image qui zoome
+// data-hover-zoom-frame → sur le cadre qui rogne le zoom (overflow hidden)
+// Intensité facultative : style="--zoom-scale: 1.05" sur data-hover-zoom
+[data-hover-zoom] {
+  --zoom-scale: 1.025;
+  --zoom-duration: 1s;
+}
+
+[data-hover-zoom-img] {
+  transition: transform var(--zoom-duration, 1s) cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+[data-hover-zoom-frame] {
+  overflow: hidden;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-hover-zoom]:hover [data-hover-zoom-img] {
+    transform: scale(var(--zoom-scale, 1.025));
   }
 }
 
-@media (hover: hover) {
-  .model_card:hover .model_card_img {
-    transform: scale(1.025);
+.section_event_speakers.is-placed {
+  display: block;
+}
+
+// ---- Cartes avec lien absolu (lien-abs / modal_link) ----
+
+// Toute card qui contient un lien absolu devient le repère de positionnement
+:has(> :is(.lien-abs, .modal_link)) {
+  position: relative;
+}
+
+// Le lien couvre la card
+.lien-abs,
+.modal_link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+// Le conteneur du bouton passe au-dessus du lien, mais ne capte pas la souris
+// (le reste de la card reste cliquable via le lien absolu)
+:has(> :is(.lien-abs, .modal_link)) > :is(.event_content, .blog_content, .model_card-foot) {
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+}
+
+// Le bouton reçoit son propre survol et son clic
+:has(> :is(.lien-abs, .modal_link)) .button {
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+// Animation au survol du bouton uniquement
+.button.is-secondary {
+  transition: border-bottom-color 0.3s ease;
+
+  @media (hover: hover) {
+    &:hover {
+      border-bottom-color: #000;
+    }
+
+    // Variante blanche (fond sombre) : is-border OU variant Webflow "is-white"
+    &.is-border:hover,
+    &[class*="w-variant-"]:hover {
+      border-bottom-color: #fff !important;
+    }
   }
 }

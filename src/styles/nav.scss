@@ -1,6 +1,7 @@
 // src/styles/nav.scss
 // Navigation : état transparent → blanc (après le hero, menu mobile ouvert,
-// dropdown ouvert) + icône burger → croix.
+// dropdown ouvert) + icône burger → croix + rotation des chevrons.
+// Variante "-dark" : même logique, mais fond noir pur (#000) + texte blanc.
 
 .navbar_component.w-nav::before,
 .navbar_component.w-nav::after {
@@ -8,7 +9,7 @@
   display: none;
 }
 
-// États qui font passer la nav en "fond blanc, texte noir"
+// États qui font passer la nav en "fond plein"
 $nav-solid-states: (
   ".is-past-hero",
   ":has(.navbar_menu-button.w--open)",
@@ -24,6 +25,11 @@ $nav-solid-states: (
 }
 
 $black: var(--base-color-brand--black-rockfi);
+
+// Variante dark : on cible l'attribut posé par Webflow sur .nav_fixed
+// (plus fiable que la classe w-variant-<hash>). Le "$=" tolère la faute
+// de frappe actuelle ("tansparent-dark").
+$nav-dark: '[data-wf--navbar--variant$="-dark"]';
 
 // Transition par défaut (retour au transparent) : douce
 .navbar_component,
@@ -50,6 +56,7 @@ $black: var(--base-color-brand--black-rockfi);
   }
 }
 
+// ---- Nav pleine : fond blanc, texte noir ----
 @include nav-solid {
   .navbar_component {
     background-color: #fff;
@@ -71,6 +78,66 @@ $black: var(--base-color-brand--black-rockfi);
       border-bottom-color: $black;
     }
   }
+}
+
+// ---- Variante dark : fond noir pur, texte blanc ----
+// Mêmes états que la nav pleine, spécificité supérieure : écrase le blanc sans !important.
+// (.navbar_menu volontairement retiré : le fond noir vient de .navbar_component
+// sur desktop, et du bloc @media ci-dessous sur mobile.)
+@each $state in $nav-solid-states {
+  .nav_fixed#{$nav-dark}#{$state} {
+    .navbar_component {
+      background-color: #000000;
+    }
+
+    .logo-navbar,
+    .navbar_link,
+    .menu-icon,
+    .dropdown-toggle {
+      color: #fff;
+    }
+
+    .navbar_component .button.is-secondary {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        border-bottom-color: #fff;
+      }
+    }
+  }
+}
+
+// ---- Variante dark : menu mobile (≤ 991px) ----
+// Fond noir statique (indépendant de l'état du burger) : pendant le repli,
+// .w--open est déjà retiré mais le menu est encore visible. Aucune
+// transition forcée : l'animation de Webflow reste intacte.
+@media (max-width: 991px) {
+  .nav_fixed#{$nav-dark} .navbar_menu {
+    background-color: #000000;
+  }
+
+  .nav_fixed#{$nav-dark} .navbar_menu .navbar_link,
+  .nav_fixed#{$nav-dark} .navbar_menu .dropdown-toggle {
+    color: #fff;
+  }
+
+  // Séparateurs : dropdowns ouverts + liens simples ouverts
+  .nav_fixed#{$nav-dark} .w-dropdown.w--nav-dropdown-open,
+  .nav_fixed#{$nav-dark} .navbar_link.w--nav-link-open {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
+
+// ---- Chevron des dropdowns : rotation instantanée à l'ouverture (sans transition) ----
+.icon-dropdown,
+.icon_locale {
+  transform-origin: center;
+}
+
+.dropdown-toggle.w--open .icon-dropdown,
+.dropdown_local.w--open .icon_locale {
+  transform: rotate(180deg);
 }
 
 // ---- Icône burger → croix ----

@@ -79,14 +79,17 @@ export function initStackCards(root = document) {
 
     // Recalcule les paliers si la bannière s'ouvre/se ferme ou si la page change de taille
     const refresh = () => window.ScrollTrigger.refresh();
+    const onLoad = () => window.ScrollTrigger.refresh();
+
     const mo = new MutationObserver(refresh);
     mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     window.addEventListener("resize", refresh);
-    window.addEventListener("load", refresh, { once: true });
+    window.addEventListener("load", onLoad, { once: true });
 
     return () => {
       mo.disconnect();
       window.removeEventListener("resize", refresh);
+      window.removeEventListener("load", onLoad);
     };
   });
 }

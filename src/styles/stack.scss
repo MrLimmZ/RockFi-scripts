@@ -1,41 +1,38 @@
 // src/styles/stack.scss
-// Cards empilées (position: sticky) — l'effet de recul est géré par
-// src/animate/stack-cards.js
 
 .section_stack-list {
   position: relative;
 }
 
 .stack-item {
-  position: sticky;
-  transform-origin: 50% 0;
-}
-
-/* top + margin-bottom = 11.5rem pour toutes */
-.stack-item:nth-child(1) {
-  top: calc(var(--banner-offset, 0rem) + 7rem);
-  margin-bottom: 4.5rem;
-  z-index: 1;
-}
-.stack-item:nth-child(2) {
-  top: calc(var(--banner-offset, 0rem) + 8.5rem);
-  margin-bottom: 3rem;
-  z-index: 2;
-}
-.stack-item:nth-child(3) {
-  top: calc(var(--banner-offset, 0rem) + 10rem);
   margin-bottom: 1.5rem;
-  z-index: 3;
-}
-.stack-item:nth-child(4) {
-  top: calc(var(--banner-offset, 0rem) + 11.5rem);
-  margin-bottom: 0;
-  z-index: 4;
 }
 
-@media (max-width: 767px) {
+@media (min-width: 768px) {
   .stack-item {
-    position: static;
-    margin-bottom: 1.5rem !important;
+    position: sticky;
+    transform-origin: 50% 0;
+  }
+
+  /* top + margin-bottom = 11.5rem pour toutes */
+  .stack-item:nth-child(1) {
+    top: calc(var(--banner-offset, 0rem) + 7rem);
+    margin-bottom: 4.5rem;
+    z-index: 1;
+  }
+  .stack-item:nth-child(2) {
+    top: calc(var(--banner-offset, 0rem) + 8.5rem);
+    margin-bottom: 3rem;
+    z-index: 2;
+  }
+  .stack-item:nth-child(3) {
+    top: calc(var(--banner-offset, 0rem) + 10rem);
+    margin-bottom: 1.5rem;
+    z-index: 3;
+  }
+  .stack-item:nth-child(4) {
+    top: calc(var(--banner-offset, 0rem) + 11.5rem);
+    margin-bottom: 0;
+    z-index: 4;
   }
 }

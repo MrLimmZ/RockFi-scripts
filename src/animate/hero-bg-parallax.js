@@ -36,7 +36,8 @@
 //   data-hero-bg-scrub="1"      lissage global (défaut 1)
 //   data-hero-bg-start / data-hero-bg-end : bornes du trigger (sur le premier élément)
 //   data-hero-bg-mouse="3"      suivi souris, amplitude max en % de la taille du cadre
-//                               (uniquement quand la souris est dans le hero)
+//                               (uniquement quand la souris est dans le hero,
+//                               et gelé tant qu'un dropdown / le menu mobile est ouvert)
 //
 // Attribut parallax interne :
 //   data-hero-bg-inner="8"      amplitude en % (négatif = sens inverse, 0 ou absent = désactivé)
@@ -50,6 +51,10 @@ const INTRO_DEFAULT_OPACITY = 0;
 const INTRO_DEFAULT_DURATION = 1.2;
 const INTRO_DEFAULT_EASE = "power2.out";
 const INTRO_STAGGER = 0.35;
+
+// Dropdown ou menu mobile ouvert : le suivi souris est gelé
+const NAV_OPEN_SELECTOR =
+  ".nav_fixed .w-dropdown-toggle.w--open, .nav_fixed .w-nav-button.w--open";
 
 function num(value, fallback) {
   const n = parseFloat(value);
@@ -224,9 +229,20 @@ export function initHeroBgParallax(root = document) {
         });
       };
 
+      const navOpen = () => !!document.querySelector(NAV_OPEN_SELECTOR);
+
       // Écoute sur window : le suivi continue au-dessus de la nav,
-      // mais s'arrête dès que la souris sort de la zone du hero.
+      // mais s'arrête dès que la souris sort de la zone du hero
+      // ou qu'un dropdown / le menu mobile est ouvert.
       const onMove = (e) => {
+        if (navOpen()) {
+          if (!outside) {
+            outside = true;
+            resetMovers();
+          }
+          return;
+        }
+
         const r = hero.getBoundingClientRect();
 
         const inside =
@@ -257,12 +273,26 @@ export function initHeroBgParallax(root = document) {
         resetMovers();
       };
 
+      // Retour au centre dès l'ouverture d'un dropdown, sans attendre un mouvement
+      const nav = document.querySelector(".nav_fixed");
+      let navObserver = null;
+      if (nav && typeof MutationObserver !== "undefined") {
+        navObserver = new MutationObserver(() => {
+          if (navOpen() && !outside) {
+            outside = true;
+            resetMovers();
+          }
+        });
+        navObserver.observe(nav, { attributes: true, attributeFilter: ["class"], subtree: true });
+      }
+
       window.addEventListener("mousemove", onMove, { passive: true });
       document.addEventListener("mouseout", onLeave);
 
       return () => {
         window.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseout", onLeave);
+        if (navObserver) navObserver.disconnect();
         resetMovers();
       };
     }

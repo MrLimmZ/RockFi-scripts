@@ -12,6 +12,7 @@ export function initNavDropdownHover() {
   if (!nav || !dropdowns.length) return;
 
   setupDesktopMenuReset(nav);
+  setupMobileMenuScroll(nav);
   setupScrollLock(nav);
   setupFirstLinkAlignment(nav, dropdowns);
 
@@ -89,6 +90,38 @@ function setupDesktopMenuReset(nav) {
   desktop.addEventListener("change", reset);
 
   reset();
+}
+
+// Menu mobile scrollable pendant que la page est bloquée :
+// - pose --nav-menu-top (bas de la barre, bannière comprise) pour le max-height
+//   du menu (cf. nav.scss), recalculée au resize et quand la nav change de
+//   hauteur (fermeture de la bannière) ;
+// - marque le menu et l'overlay Webflow en data-lenis-prevent : Lenis arrêté
+//   bloquerait sinon la molette à l'intérieur du menu.
+function setupMobileMenuScroll(nav) {
+  const bar = nav.querySelector(".navbar_component");
+  if (!bar) return;
+
+  nav
+    .querySelectorAll(".navbar_menu, .w-nav-overlay")
+    .forEach((el) => el.setAttribute("data-lenis-prevent", ""));
+
+  function update() {
+    nav.style.setProperty(
+      "--nav-menu-top",
+      `${Math.round(bar.getBoundingClientRect().bottom)}px`,
+    );
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(update);
+    observer.observe(nav);
+    observer.observe(bar);
+  }
+
+  window.addEventListener("resize", update, { passive: true });
+
+  update();
 }
 
 function setupScrollLock(nav) {

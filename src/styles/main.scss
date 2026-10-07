@@ -75,9 +75,8 @@
       border-bottom-color: #000;
     }
 
-    // Variante blanche (fond sombre) : is-border OU variant Webflow "is-white"
     &.is-border:hover,
-    &[class*="w-variant-"]:hover {
+    &[data-wf--button-secondary--variant*="white"]:hover {
       border-bottom-color: #fff !important;
     }
   }

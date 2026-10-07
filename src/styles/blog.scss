@@ -2,7 +2,7 @@
 // ROCKFI — STYLES DE L'ARTICLE DE BLOG (src/styles/blog.scss)
 // ===========================================================================
 //
-// 1. CONFIGURATION & MIXINS
+// 1. CONFIGURATION & MIXINS (dont rt-table-styles)
 // 2. LAYOUT & STRUCTURE
 // 3. UTILITAIRES & ACCESSIBILITÉ
 // 4. RICH-TEXT CONTENT WRAPPERS (.rf-wrap, embeds)
@@ -16,6 +16,7 @@
 //    5.7 Citations (.rt-quote, .rt-quote-large)
 //    5.8 Carrousel / Slider (.rt-slider)
 //    5.9 Player Vidéo Plyr (.rt-video)
+// 5b. TABLEAUX DES PAGES JURIDIQUES (.rich-text_juridique .rt-table)
 // 6. MODULES COMPLÉMENTAIRES (TOC, Toast, FAQ)
 //
 // ===========================================================================
@@ -40,6 +41,76 @@ $breakpoint-tablet: 991px;
 %webflow-gutter-reset {
   padding-left: 0;
   padding-right: 0;
+}
+
+// Style des tableaux de données : à inclure sur l'élément <table>.
+// Utilisé par le blog (.rich-text_blog table) et par les pages juridiques
+// (.rich-text_juridique .rt-table).
+@mixin rt-table-styles {
+  width: 100%;
+  min-width: 620px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: $font-sans;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: $color-black-70;
+
+  @media screen and (max-width: $breakpoint-tablet) {
+    min-width: 560px;
+  }
+
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(
+      --text-color--text-primary,
+      var(--base-color-neutral--black, #0f0f0f)
+    );
+    border-bottom: 2px solid $color-black;
+
+    &:first-child {
+      padding-left: 4px;
+    }
+
+    @media screen and (max-width: $breakpoint-tablet) {
+      padding: 9px 10px;
+    }
+  }
+
+  td,
+  th[scope="row"] {
+    padding: 14px;
+    border-bottom: 1px solid $color-border;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+
+    &:first-child {
+      padding-left: 4px;
+    }
+
+    @media screen and (max-width: $breakpoint-tablet) {
+      padding: 10px;
+    }
+  }
+
+  tbody tr {
+    &:first-child > * {
+      padding-top: 22px;
+    }
+
+    td:first-child,
+    th:first-child {
+      font-weight: 600;
+      color: var(
+        --text-color--text-primary,
+        var(--base-color-neutral--black, #0f0f0f)
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +364,8 @@ $breakpoint-tablet: 991px;
 
   // 5.5 TABLEAUX DE DONNÉES
   // -------------------------------------------------------------------------
+  // Le style vient du mixin rt-table-styles (section 1), partagé avec les
+  // pages juridiques (section 5b).
   .rt-table-wrap {
     @media screen and (max-width: $breakpoint-tablet) {
       overflow-x: auto;
@@ -301,70 +374,7 @@ $breakpoint-tablet: 991px;
   }
 
   table {
-    width: 100%;
-    min-width: 620px;
-    table-layout: fixed;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-family: $font-sans;
-    font-size: 0.8rem;
-    font-weight: 400;
-    line-height: 1.5;
-    color: $color-black-70;
-
-    @media screen and (max-width: $breakpoint-tablet) {
-      min-width: 560px;
-    }
-  }
-
-  th {
-    padding: 12px 14px;
-    text-align: left;
-    font-weight: 600;
-    color: var(
-      --text-color--text-primary,
-      var(--base-color-neutral--black, #0f0f0f)
-    );
-    border-bottom: 2px solid $color-black;
-
-    &:first-child {
-      padding-left: 4px;
-    }
-
-    @media screen and (max-width: $breakpoint-tablet) {
-      padding: 9px 10px;
-    }
-  }
-
-  td,
-  th[scope="row"] {
-    padding: 14px;
-    border-bottom: 1px solid $color-border;
-    vertical-align: top;
-    overflow-wrap: anywhere;
-
-    &:first-child {
-      padding-left: 4px;
-    }
-
-    @media screen and (max-width: $breakpoint-tablet) {
-      padding: 10px;
-    }
-  }
-
-  tbody tr {
-    &:first-child > * {
-      padding-top: 22px;
-    }
-
-    td:first-child,
-    th:first-child {
-      font-weight: 600;
-      color: var(
-        --text-color--text-primary,
-        var(--base-color-neutral--black, #0f0f0f)
-      );
-    }
+    @include rt-table-styles;
   }
 
   // 5.6 BOUTONS EMBEDDÉS
@@ -683,6 +693,27 @@ $breakpoint-tablet: 991px;
         transform: scale(1.06);
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5b. TABLEAUX DES PAGES JURIDIQUES
+// ---------------------------------------------------------------------------
+// Les pages juridiques utilisent .rich-text_juridique (pas .rich-text_blog) :
+// on y applique le même style, uniquement sur les tableaux marqués .rt-table.
+// Le tableau est collé dans un embed Webflow (.w-embed) : on y active le
+// défilement horizontal pour tablette et mobile.
+.rich-text_juridique {
+  .w-embed:has(> .rt-table) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    margin: 1.25rem 0;
+  }
+
+  .rt-table {
+    @include rt-table-styles;
   }
 }
 

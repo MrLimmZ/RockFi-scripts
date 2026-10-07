@@ -158,6 +158,24 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
   }
 }
 
+// ---- Menu mobile : scroll interne quand il dépasse la hauteur de l'écran ----
+// La page est bloquée (cf. nav-dropdown-hover.js) pendant que le menu est ouvert :
+// le menu doit donc défiler lui-même. --nav-menu-top (bas de la barre, bannière
+// comprise) est posée en JS. Webflow déplace le menu dans .w-nav-overlay à
+// l'ouverture : on plafonne les deux avec la même hauteur.
+@media #{$nav-mobile-query} {
+  .nav_fixed .navbar_menu,
+  .nav_fixed .w-nav-overlay {
+    max-height: calc(100dvh - var(--nav-menu-top, 0px));
+  }
+
+  .nav_fixed .navbar_menu {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 // ---- Overlay derrière la nav quand le menu mobile (burger) est ouvert ----
 // Le CSS global n'affiche .nav-overlay que si un .w-dropdown-toggle est ouvert.
 // Même rendu (opacité, transition) pour le bouton burger, sous 992px seulement.

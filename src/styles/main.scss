@@ -53,7 +53,8 @@
 
 // Le conteneur du bouton passe au-dessus du lien, mais ne capte pas la souris
 // (le reste de la card reste cliquable via le lien absolu)
-:has(> :is(.lien-abs, .modal_link)) > :is(.event_content, .blog_content, .model_card-foot) {
+:has(> :is(.lien-abs, .modal_link))
+  > :is(.event_content, .blog_content, .model_card-foot) {
   position: relative;
   z-index: 3;
   pointer-events: none;
@@ -79,5 +80,26 @@
     &[data-wf--button-secondary--variant*="white"]:hover {
       border-bottom-color: #fff !important;
     }
+  }
+}
+
+.heading-presse {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  height: auto;
+  text-overflow: ellipsis;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  transition: opacity 0.3s ease;
+
+  &.swiper-button-disabled {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
   }
 }

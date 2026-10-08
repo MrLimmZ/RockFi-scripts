@@ -255,3 +255,45 @@ $fade: 0.35s;
 .is-previewing .video_controller {
   @include shown;
 }
+
+// ---- Bouton qui suit la souris (data-video-follow) ----
+// À garder EN DERNIER : ces règles doivent l'emporter sur les états
+// ci-dessus (hover du .video_layout, .is-previewing, .is-personas, .is-presse...).
+// --fx / --fy sont posées par le JS ; pas de transition sur `translate` (lissage fait en JS).
+.video_controller.is-follow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  translate: var(--fx, 0px) var(--fy, 0px);
+  pointer-events: none; // le clic est capté par la zone, pas par le bouton
+  will-change: translate;
+  cursor: none;
+}
+
+// Caché tant que la souris n'est pas dans la zone
+.video_controller.is-follow:not(.is-follow-visible) {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.6);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0s linear 0.25s;
+}
+
+.video_controller.is-follow.is-follow-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0s;
+}
+
+// Curseur masqué dans la zone (le JS retire la classe sur liens / boutons / data-video-no-follow)
+.is-follow-cursor,
+.is-follow-cursor * {
+  cursor: none;
+}

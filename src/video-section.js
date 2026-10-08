@@ -40,6 +40,19 @@
 //   data-video-magnet="0.35"        force de l'effet magnétique (0 = désactivé)
 //   data-video-magnet-zone          (sur un élément enfant) limite la zone où la
 //                                   souris déclenche le magnétisme ; sinon tout le root
+//   data-video-follow               le bouton REMPLACE le magnétisme : il apparaît quand la
+//                                   souris entre dans la zone, la suit, et le curseur est
+//                                   masqué. Un clic dans la zone lance la vidéo. Le bouton
+//                                   se masque au-dessus des liens / boutons de la zone.
+//                                   Valeur facultative = lissage (0.18 par défaut,
+//                                   1 = instantané). Désactivé sur tactile.
+//   data-video-follow-zone          définit la zone de suivi. Cherché dans l'ordre :
+//                                   1) sur un élément ENFANT du root (réduit la zone),
+//                                   2) sur un élément PARENT du root (agrandit la zone,
+//                                      ex. la section entière, marges comprises),
+//                                   3) sinon le root lui-même (.video_layout / carte)
+//   data-video-no-follow            (sur un élément enfant de la zone) masque le bouton
+//                                   et rend le curseur quand la souris le survole
 
 const PLYR_I18N_FR = {
   play: "Lire",
@@ -52,7 +65,17 @@ const PLYR_I18N_FR = {
   exitFullscreen: "Quitter le plein écran",
 };
 
+// Options passées à l'iframe YouTube (ignorées pour Vimeo / mp4)
+const YOUTUBE_OPTIONS = {
+  noCookie: true, // youtube-nocookie.com
+  rel: 0, // suggestions limitées à la même chaîne
+  modestbranding: 1, // logo YouTube réduit
+  iv_load_policy: 3, // pas d'annotations
+  playsinline: 1,
+};
+
 const DEFAULT_MAGNET = 0.35;
+const DEFAULT_FOLLOW = 0.18; // lissage du bouton qui suit la souris
 const DEFAULT_AUTOPLAY_DELAY = 0; // secondes (0 = dès que la carte est visible)
 const FADE_MS = 350; // doit correspondre à la transition CSS des holders
 const REVEAL_TIMEOUT_MS = 4000; // sécurité lecteur classique
@@ -239,6 +262,123 @@ function initMagnet(scope, mover, anchor, strength) {
   scope.addEventListener("mouseleave", reset);
 }
 
+// Bouton qui suit la souris (data-video-follow) : remplace le magnétisme.
+//   scope   : zone où le bouton apparaît, suit la souris et masque le curseur
+//   mover   : élément qui suit (.video_controller, passé en position: fixed par le CSS)
+//   anchor  : point du bouton placé pile sous la souris (.video_controller-play)
+//   ease    : lissage (1 = instantané)
+//   canShow : renvoie false pendant la lecture
+//   onClick : lancé au clic dans la zone (le bouton lui-même ne reçoit pas la souris)
+// Au clavier, le bouton s'affiche au centre de la zone quand il prend le focus.
+function initFollow(scope, mover, anchor, ease, canShow, onClick) {
+  if (!scope || !mover || !anchor) return null;
+  if (window.matchMedia && window.matchMedia("(hover: none)").matches) return null;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    ease = 1;
+  }
+
+  const INTERACTIVE = "a, button, input, select, textarea, label, [data-video-no-follow]";
+  const isInteractive = (t) => t instanceof Element && Boolean(t.closest(INTERACTIVE));
+
+  let tx = 0;
+  let ty = 0;
+  let cx = 0;
+  let cy = 0;
+  let mx = 0; // dernière position souris (viewport)
+  let my = 0;
+  let raf = null;
+  let on = false;
+  let seen = false; // une position de souris valide est connue (la souris est dans la fenêtre)
+
+  mover.classList.add("is-follow");
+
+  function apply() {
+    mover.style.setProperty("--fx", `${cx.toFixed(1)}px`);
+    mover.style.setProperty("--fy", `${cy.toFixed(1)}px`);
+  }
+
+  function render() {
+    cx += (tx - cx) * ease;
+    cy += (ty - cy) * ease;
+    apply();
+    const settled = Math.abs(tx - cx) < 0.1 && Math.abs(ty - cy) < 0.1;
+    raf = settled ? null : requestAnimationFrame(render);
+  }
+
+  // Place le centre de l'icône sous la souris. On retire la translation en cours
+  // pour retrouver sa position "au repos" (marche aussi si un parent est transformé).
+  function retarget(snap) {
+    const r = anchor.getBoundingClientRect();
+    tx = mx - (r.left + r.width / 2 - cx);
+    ty = my - (r.top + r.height / 2 - cy);
+    if (snap) {
+      cx = tx;
+      cy = ty;
+      apply();
+    } else if (!raf) {
+      raf = requestAnimationFrame(render);
+    }
+  }
+
+  function hide() {
+    if (!on) return;
+    on = false;
+    mover.classList.remove("is-follow-visible");
+    scope.classList.remove("is-follow-cursor");
+  }
+
+  function onMove(ev) {
+    mx = ev.clientX;
+    my = ev.clientY;
+    if (!canShow() || isInteractive(ev.target)) return hide();
+    const first = !on; // à l'apparition : pas de glissade depuis l'ancienne position
+    on = true;
+    mover.classList.add("is-follow-visible");
+    scope.classList.add("is-follow-cursor");
+    retarget(first);
+  }
+
+  scope.addEventListener("mousemove", onMove);
+  scope.addEventListener("mouseleave", hide);
+  scope.addEventListener("click", (ev) => {
+    if (canShow() && !isInteractive(ev.target)) onClick(ev);
+  });
+
+  // Défilement sans bouger la souris : on masque dès que la souris n'est plus dans la zone.
+  // On compare avec le rectangle de la zone (et non elementFromPoint, qui dépend de ce qui
+  // passe au-dessus). capture: true attrape aussi le scroll d'un conteneur interne
+  // (wrapper, Lenis...), que `scroll` sur window seul ne voit pas.
+  const checkOut = () => {
+    if (!on) return;
+    const r = scope.getBoundingClientRect();
+    const inside = mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom;
+    if (!inside || !canShow()) return hide();
+    const t = document.elementFromPoint(mx, my);
+    if (t && scope.contains(t) && isInteractive(t)) hide();
+  };
+  window.addEventListener("scroll", checkOut, { passive: true, capture: true });
+  window.addEventListener("resize", checkOut);
+
+  // Clavier : affichage au centre de la partie visible de la zone
+  mover.addEventListener("focus", () => {
+    if (on || !canShow()) return;
+    const r = scope.getBoundingClientRect();
+    mx = (Math.max(r.left, 0) + Math.min(r.right, window.innerWidth)) / 2;
+    my = (Math.max(r.top, 0) + Math.min(r.bottom, window.innerHeight)) / 2;
+    on = true;
+    mover.classList.add("is-follow-visible");
+    retarget(true);
+  });
+  mover.addEventListener("blur", hide);
+
+  return {
+    // À appeler quand la lecture démarre : masque le bouton et rend le curseur
+    sync() {
+      if (!canShow()) hide();
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Lecteur unique : un seul actif à la fois (les aperçus muets ne comptent pas)
 // ---------------------------------------------------------------------------
@@ -259,12 +399,14 @@ function setupPlayback({
   root,
   host,
   trigger,
+  extraTriggers = [],
   timerEl,
   src,
   captions,
   title,
   duration,
   magnet,
+  follow,
   autoplay,
   autoplayDelay,
   autoplayStart,
@@ -275,7 +417,8 @@ function setupPlayback({
   // et uniquement quand la souris est dans la zone définie
   const playBtn = trigger && trigger.querySelector(".video_controller-play");
   const magnetScope = root.querySelector("[data-video-magnet-zone]") || root;
-  initMagnet(magnetScope, trigger, playBtn, magnet);
+  // data-video-follow remplace le magnétisme
+  if (!follow) initMagnet(magnetScope, trigger, playBtn, magnet);
 
   let holder = null;
   let player = null;
@@ -291,6 +434,20 @@ function setupPlayback({
   let inView = true;
 
   const isNative = getVideoInfo(src).type === "native";
+
+  // Bouton qui suit la souris (null si désactivé ou appareil tactile)
+  const follower = follow
+    ? initFollow(
+        root.querySelector("[data-video-follow-zone]") ||
+          root.closest("[data-video-follow-zone]") ||
+          root,
+        trigger,
+        playBtn,
+        follow,
+        () => !holder,
+        (e) => start(e),
+      )
+    : null;
 
   // Un clic dans le lecteur ne doit jamais suivre le lien parent.
   // preventDefault seulement : Plyr doit continuer à recevoir ses clics.
@@ -398,6 +555,8 @@ function setupPlayback({
       // Boucle gérée à la main (voir "ended") pour pouvoir reboucler à autoplayStart
       loop: { active: false },
       tooltips: { controls: false, seek: false },
+      // YouTube : aucune barre de contrôle ni raccourci clavier dans l'aperçu
+      youtube: { ...YOUTUBE_OPTIONS, controls: 0, disablekb: 1 },
     });
     previewPlayer = pl;
 
@@ -504,6 +663,9 @@ function setupPlayback({
     // Le lecteur peut se trouver dans un <a> : aucun clic dedans ne doit ouvrir le lien
     root.addEventListener("click", blockLink, true);
 
+    // Le bouton qui suit la souris disparaît pendant la lecture
+    if (follower) follower.sync();
+
     const h = holder;
     let revealed = false;
 
@@ -545,9 +707,14 @@ function setupPlayback({
         "fullscreen",
       ],
       i18n: PLYR_I18N_FR,
+      youtube: YOUTUBE_OPTIONS,
     });
 
     player.once("playing", reveal);
+    // Sans aperçu en dessous : le lecteur Plyr (fond noir + contrôles) s'affiche dès qu'il est
+    // prêt, sans attendre le premier "playing". Avec un aperçu, on attend "playing"
+    // pour ne pas remplacer l'aperçu par un écran noir.
+    if (!previewHolder) player.once("ready", reveal);
 
     if (isNative) player.play();
     else player.once("ready", () => player.play());
@@ -558,17 +725,17 @@ function setupPlayback({
     player.on("ended", () => stop());
   }
 
-  if (trigger) {
-    trigger.setAttribute("role", "button");
-    trigger.setAttribute("tabindex", "0");
-    trigger.setAttribute("aria-label", "Voir la vidéo");
-    trigger.addEventListener("click", start);
-    trigger.addEventListener("keydown", (ev) => {
+  [trigger, ...extraTriggers].filter(Boolean).forEach((btn) => {
+    btn.setAttribute("role", "button");
+    btn.setAttribute("tabindex", "0");
+    btn.setAttribute("aria-label", "Voir la vidéo");
+    btn.addEventListener("click", start);
+    btn.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
         start(ev);
       }
     });
-  }
+  });
 
   // Aperçu : lancé/mis en pause selon la visibilité à l'écran
   if (autoplay) {
@@ -589,6 +756,15 @@ function setupPlayback({
 
 function readMagnet(el) {
   return el.dataset.videoMagnet !== undefined ? parseFloat(el.dataset.videoMagnet) : DEFAULT_MAGNET;
+}
+
+// Bouton qui suit la souris : actif si data-video-follow est présent (et != "false").
+// Une valeur entre 0 et 1 règle le lissage (1 = instantané)
+function readFollow(el) {
+  const v = el.dataset.videoFollow;
+  if (v === undefined || v === "false") return 0;
+  const n = parseFloat(v);
+  return n > 0 && n <= 1 ? n : DEFAULT_FOLLOW;
 }
 
 // Autoplay actif si l'attribut est présent (et différent de "false"),
@@ -621,16 +797,22 @@ function initOne(media) {
 
   const layout = media.closest(".video_layout") || media.parentElement;
 
+  // Plusieurs boutons possibles (ex. desktop + mobile) : tous lancent la vidéo,
+  // le premier est celui qui bouge (magnétisme / suivi de la souris)
+  const triggers = [...layout.querySelectorAll("[data-video-play]")];
+
   setupPlayback({
     root: layout,
     host: media.querySelector("[data-video-host]") || media,
-    trigger: layout.querySelector("[data-video-play]"),
+    trigger: triggers[0],
+    extraTriggers: triggers.slice(1),
     timerEl: layout.querySelector("[data-video-timer]"),
     src,
     captions: media.dataset.videoCaptions || "",
     title: media.dataset.videoTitle || "",
     duration: media.dataset.videoDuration,
     magnet: readMagnet(media),
+    follow: readFollow(media),
     autoplay: readAutoplay(media),
     autoplayDelay: readAutoplayDelay(media),
     autoplayStart: readAutoplayStart(media),
@@ -655,6 +837,7 @@ function initCard(card) {
     title: card.dataset.videoTitle || "",
     duration: card.dataset.videoDuration,
     magnet: readMagnet(card),
+    follow: readFollow(card),
     autoplay: readAutoplay(card),
     autoplayDelay: readAutoplayDelay(card),
     autoplayStart: readAutoplayStart(card),

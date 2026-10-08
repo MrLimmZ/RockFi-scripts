@@ -62,30 +62,6 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
   }
 }
 
-// Transition par défaut (retour au transparent) : douce
-.navbar_component,
-.navbar_component .logo-navbar,
-.navbar_component .navbar_link,
-.navbar_component .dropdown-toggle,
-.navbar_component .menu-icon,
-.navbar_component .button.is-secondary {
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease;
-}
-
-// Ouverture d'un dropdown : bascule rapide pour suivre l'apparition du panneau
-.nav_fixed:has(.dropdown-toggle.w--open) {
-  .navbar_component,
-  .logo-navbar,
-  .navbar_link,
-  .dropdown-toggle,
-  .menu-icon,
-  .button.is-secondary {
-    transition-duration: 0.12s;
-  }
-}
 
 // ---- Nav pleine : fond blanc, texte noir ----
 @include nav-solid {
@@ -105,9 +81,21 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
     border-color: var(--border-color--border-alternate)
       var(--border-color--border-alternate) #1a1a1a1f;
 
+    // !important : main.scss (≈ l.79) force un soulignement blanc au survol des boutons
+    // secondaires "white" avec !important. Sans ça, il écrase le noir sur nav blanche.
     &:hover {
-      border-bottom-color: $black;
+      border-bottom-color: $black !important;
     }
+  }
+}
+
+// ---- Bouton secondaire : nav transparente (variante claire) scrollée ----
+// Au survol, soulignement noir pur. Cible uniquement la variante "transparent"
+// (pas la dark) et l'état scrollé (.is-past-hero). Spécificité supérieure au
+// survol des variants Webflow (.button.is-secondary:hover:where(.w-variant-…)).
+.nav_fixed[data-wf--navbar--variant="transparent"].is-past-hero {
+  .navbar_component .button.is-secondary:hover {
+    border-bottom-color: #000 !important; // bat le "#fff !important" de main.scss
   }
 }
 
@@ -131,8 +119,10 @@ $nav-dark: '[data-wf--navbar--variant$="-dark"]';
     color: #fff;
     border-color: rgba(255, 255, 255, 0.2);
 
+    // !important : sinon, la règle noire !important de la nav pleine (même état) l'emporterait
+    // sur la variante dark. Spécificité supérieure : la dark gagne.
     &:hover {
-      border-bottom-color: #fff;
+      border-bottom-color: #fff !important;
     }
   }
 }
